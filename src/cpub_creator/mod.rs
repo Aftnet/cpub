@@ -1,18 +1,33 @@
 mod metadata;
 pub use metadata::Metadata;
 
-#[derive(Default)]
 pub struct Writer {
     pub metadata: Metadata
 }
 
+impl Writer {
+    pub fn new(path: &str) -> Self {
+        let output = Writer {
+            metadata: Metadata::default()
+        };
+        return output;
+    }
+
+    pub fn set_cover() {
+
+    }
+
+    pub fn add_image() {
+
+    }
+
+    pub fn close() {
+        
+    }
+}
+
 pub fn lol() {
-    let mut writer: Writer=Writer::default();
+    let mut writer = Writer::new("D:\\Test.epub");
     writer.metadata.language = "some".to_string();
     println!("{}", &writer.metadata.language);
-    let mut test: Metadata = Default::default();
-    test.title = "awfawf".to_string();
-    test.title += "lol";
-    println!("{}", test.title);
-    println!("{}", test.author);
 }

@@ -21,6 +21,10 @@ pub struct Metadata {
 }
 
 impl Metadata {
+    fn is_invalid_string(value: &str) -> bool {
+        value.is_empty() || value.split_whitespace().count() == 0
+    }
+
     pub fn is_valid(&self) -> bool {
         if Metadata::is_invalid_string(&self.id) {
             return false;
@@ -39,10 +43,6 @@ impl Metadata {
         }
 
         true
-    }
-
-    fn is_invalid_string(value: &str) -> bool {
-        value.is_empty() || value.split_whitespace().count() == 0
     }
 }
 
