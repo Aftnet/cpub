@@ -3,19 +3,20 @@ pub use metadata::Metadata;
 
 pub use zip::write::ZipWriter;	
 
-pub struct Writer {
-    pub metadata: Metadata
+pub struct EpubWriter {
+    pub metadata: Metadata,
+
+    writer: zip::ZipWriter<std::fs::File>
 }
 
-impl Writer {
-    pub fn new(path: &std::path::Path) -> std::io::Result<Writer> {
-        let mut file = match std::fs::File::create(path) {
-            Ok(res) => res,
-            Err(err) => return Err(err),
-        };
+impl EpubWriter {
+    pub fn new(path: &std::path::Path) -> Result<EpubWriter, std::io::Error> {
+        let mut file = std::fs::File::create(path)?;
         
-        let mut writer = zip::ZipWriter::new(file);
-        let mut output : Writer;
+        let mut output = EpubWriter {
+            metadata: Default::default(),
+            writer: zip::ZipWriter::new(file)
+        };
         return Ok(output);
     }
 
@@ -30,10 +31,4 @@ impl Writer {
     pub fn close() {
         
     }
-}
-
-pub fn lol() {
-    let mut writer = Writer::new("D:\\Test.epub");
-    writer.metadata.language = "some".to_string();
-    println!("{}", &writer.metadata.language);
 }
