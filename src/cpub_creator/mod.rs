@@ -1,4 +1,6 @@
 mod metadata;
+mod templates;
+
 pub use metadata::Metadata;
 
 pub use zip::write::ZipWriter;	
@@ -7,6 +9,7 @@ use std::io::Write;
 pub struct EpubWriter {
     pub metadata: Metadata,
 
+    closed: bool,
     writer: zip::ZipWriter<std::fs::File>
 }
 
@@ -16,6 +19,7 @@ impl EpubWriter {
         
         let mut output = EpubWriter {
             metadata: Default::default(),
+            closed: false,
             writer: zip::ZipWriter::new(file)
         };
 
@@ -23,16 +27,22 @@ impl EpubWriter {
         return Ok(output);
     }
 
-    pub fn set_cover(&mut self) {
-
+    pub fn set_cover(&mut self) -> Result<(), std::io::Error> {
+        return Ok(());
     }
 
-    pub fn add_image(&mut self) {
-
+    pub fn add_image(&mut self) -> Result<(), std::io::Error> {
+        return Ok(());
     }
 
-    pub fn close(&mut self) {
-        
+    pub fn close(&mut self) -> Result<(), std::io::Error> {
+        if self.closed {
+            return Ok(());
+        }
+
+        self.closed = true;
+        self.writer.finish()?;
+        return Ok(());
     }
 
     fn add_static_data(&mut self) -> Result<(), std::io::Error> {
@@ -42,8 +52,14 @@ impl EpubWriter {
         write!(self.writer, "application/epub+zip")?;
 
         self.writer.start_file("META-INF/container.xml", options)?;
-        self.writer.write(b"lol")?;
+        write!(self.writer, "{}", templates::CONTAINER_XML)?;
 
         return Ok(());
+    }
+}
+
+impl Drop for EpubWriter {
+    fn drop(&mut self) {
+        self.close().expect("Unhandled I/O error on close");
     }
 }
