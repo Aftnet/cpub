@@ -2,6 +2,7 @@ mod metadata;
 pub use metadata::Metadata;
 
 pub use zip::write::ZipWriter;	
+use std::io::Write;
 
 pub struct EpubWriter {
     pub metadata: Metadata,
@@ -17,18 +18,32 @@ impl EpubWriter {
             metadata: Default::default(),
             writer: zip::ZipWriter::new(file)
         };
+
+        output.add_static_data()?;
         return Ok(output);
     }
 
-    pub fn set_cover() {
+    pub fn set_cover(&mut self) {
 
     }
 
-    pub fn add_image() {
+    pub fn add_image(&mut self) {
 
     }
 
-    pub fn close() {
+    pub fn close(&mut self) {
         
+    }
+
+    fn add_static_data(&mut self) -> Result<(), std::io::Error> {
+        let options = zip::write::FileOptions::default();
+
+        self.writer.start_file("mimetype", options.compression_method(zip::CompressionMethod::Stored))?;
+        write!(self.writer, "application/epub+zip")?;
+
+        self.writer.start_file("META-INF/container.xml", options)?;
+        self.writer.write(b"lol")?;
+
+        return Ok(());
     }
 }
