@@ -7,15 +7,14 @@ pub use zip::write::ZipWriter;
 use std::io::Write;
 
 pub struct EpubWriter {
-    pub metadata: Metadata,
-
+    metadata: Metadata,
     closed: bool,
     writer: zip::ZipWriter<std::fs::File>
 }
 
 impl EpubWriter {
     pub fn new(path: &std::path::Path) -> Result<EpubWriter, std::io::Error> {
-        let mut file = std::fs::File::create(path)?;
+        let file = std::fs::File::create(path)?;
         
         let mut output = EpubWriter {
             metadata: Default::default(),
@@ -25,6 +24,15 @@ impl EpubWriter {
 
         output.add_static_data()?;
         return Ok(output);
+    }
+
+    pub fn metadata(&mut self, value: Metadata) -> Result<(), &str>{
+        if !value.validate() {
+            return Err("Invalid metadata");
+        }
+
+        self.metadata = value;
+        return Ok(());
     }
 
     pub fn set_cover(&mut self) -> Result<(), std::io::Error> {

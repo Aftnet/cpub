@@ -25,7 +25,7 @@ impl Metadata {
         value.is_empty() || value.split_whitespace().count() == 0
     }
 
-    pub fn is_valid(&self) -> bool {
+    pub fn validate(&self) -> bool {
         if Metadata::is_invalid_string(&self.id) {
             return false;
         }
