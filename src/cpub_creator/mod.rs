@@ -26,13 +26,8 @@ impl EpubWriter {
         return Ok(output);
     }
 
-    pub fn metadata(&mut self, value: Metadata) -> Result<(), &str>{
-        if !value.validate() {
-            return Err("Invalid metadata");
-        }
-
-        self.metadata = value;
-        return Ok(());
+    pub fn metadata(&mut self) -> &mut Metadata {
+        &mut self.metadata
     }
 
     pub fn set_cover(&mut self) -> Result<(), std::io::Error> {
