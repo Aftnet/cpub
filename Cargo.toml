@@ -2,11 +2,13 @@
 name = "cpub"
 version = "0.1.0"
 authors = ["Alberto"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+thiserror = "1.0"
+anyhow = "1.0"
 chrono = "0.4"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 quick-xml = "0.22"
