@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"type": "cargo",
-			"subcommand": "check",
+			"subcommand": "build",
 			"problemMatcher": [
 				"$rustc"
 			],
@@ -12,7 +12,7 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"label": "Rust: cargo check - cpub"
+			"label": "Rust: cargo build"
 		}
 	]
 }

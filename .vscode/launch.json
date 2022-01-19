@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Launch",
+            "name": "Launch",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/cpub.exe",
@@ -14,7 +14,11 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "console": "externalTerminal",
-            "preLaunchTask": "Rust: cargo build - cpub"
+            "preLaunchTask": "Rust: cargo build",
+            "osx": {
+                "type": "lldb",
+                "program": "${workspaceFolder}/target/debug/cpub",
+            }
         }
     ]
 }
