@@ -34,7 +34,16 @@ impl EpubWriter {
         return Ok(());
     }
 
-    pub fn add_image(&mut self) -> Result<(), std::io::Error> {
+    pub fn add_image(&mut self, image: &mut dyn std::io::Read) -> Result<(), std::io::Error> {
+        let mut buffer: Vec<u8> = Vec::new();
+        image.read_to_end(&mut buffer)?;
+
+        let img = image::io::Reader::new(std::io::Cursor::new(&buffer)).decode()?;
+
+        let options = zip::write::FileOptions::default();
+        self.writer.start_file("OBEPF/image.png", options)?;      
+        self.writer.write_all(&buffer)?;
+
         return Ok(());
     }
 
