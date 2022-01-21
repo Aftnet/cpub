@@ -2,12 +2,20 @@ mod error;
 mod metadata;
 mod templates;
 
+use image::GenericImageView;
 use metadata::Metadata;
 use std::io::Write;
-use image::GenericImageView;
+use std::vec::{Vec};
+
+struct PageInfo {
+    image_size: (u32, u32),
+    spread: bool
+}
 
 pub struct EpubWriter {
     metadata: Metadata,
+    pages: std::vec::Vec<PageInfo>,
+    cover_added: bool,
     closed: bool,
     writer: zip::ZipWriter<std::fs::File>
 }
@@ -18,6 +26,8 @@ impl EpubWriter {
         
         let mut output = EpubWriter {
             metadata: Default::default(),
+            pages: std::vec::Vec::default(),
+            cover_added: false,
             closed: false,
             writer: zip::ZipWriter::new(file)
         };
@@ -39,11 +49,24 @@ impl EpubWriter {
         image.read_to_end(&mut buffer)?;
         
         let img = image::load_from_memory(&buffer).map_err(|source| error::EpubWriterError::InvalidImageError { source })?;
-        let (xsize, ysize) = img.dimensions();
+        let imgsize = img.dimensions();
+        self.pages.push(PageInfo {
+            image_size: imgsize,
+            spread: imgsize.0 > imgsize.1
+        });
+        let pageinfo = self.pages.last().unwrap();
 
         let options = zip::write::FileOptions::default();
-        self.writer.start_file("OBEPF/image.png", options)?;      
+        let filename = format!("S01P{:06}.png", self.pages.len());
+        self.writer.start_file(format!("OEBPS/{}", &filename), options)?;
         self.writer.write_all(&buffer)?;
+
+        let xml = templates::PAGE_REGULAR_XML.replace("IMGW", &format!("{}",pageinfo.image_size.0));
+        let xml = xml.replace("IMGH", &format!("{}",pageinfo.image_size.1));
+        let xml = xml.replace("FILENAME", &filename);
+        let filename = format!("S01P{:06}.xhtml", self.pages.len());
+        self.writer.start_file(format!("OEBPS/{}", &filename), options)?;
+        self.writer.write_all(xml.as_bytes())?;
 
         return Ok(());
     }
