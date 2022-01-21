@@ -1,10 +1,10 @@
+mod error;
 mod metadata;
 mod templates;
 
-pub use metadata::Metadata;
-
-pub use zip::write::ZipWriter;	
+use metadata::Metadata;
 use std::io::Write;
+use image::GenericImageView;
 
 pub struct EpubWriter {
     metadata: Metadata,
@@ -34,11 +34,12 @@ impl EpubWriter {
         return Ok(());
     }
 
-    pub fn add_image(&mut self, image: &mut dyn std::io::Read) -> Result<(), std::io::Error> {
+    pub fn add_image(&mut self, image: &mut dyn std::io::Read) -> Result<(), error::EpubWriterError> {
         let mut buffer: Vec<u8> = Vec::new();
         image.read_to_end(&mut buffer)?;
-
-        let img = image::io::Reader::new(std::io::Cursor::new(&buffer)).decode()?;
+        
+        let img = image::load_from_memory(&buffer).map_err(|source| error::EpubWriterError::InvalidImageError { source })?;
+        let (xsize, ysize) = img.dimensions();
 
         let options = zip::write::FileOptions::default();
         self.writer.start_file("OBEPF/image.png", options)?;      
