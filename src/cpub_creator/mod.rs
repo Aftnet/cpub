@@ -49,23 +49,23 @@ impl<W: Write + Seek> EpubWriter<W> {
         image.read_to_end(&mut buffer)?;
         
         let img = image::load_from_memory(&buffer).map_err(|source| error::EpubWriterError::InvalidImageError { source })?;
-        //let imgsize = img.dimensions();
-        //self.pages.push(PageInfo {
-        //    image_size: imgsize,
-        //    spread: imgsize.0 > imgsize.1
-        //});
-        //let pageinfo = self.pages.last().unwrap();
+        let imgsize = img.dimensions();
+        self.pages.push(PageInfo {
+            image_size: imgsize,
+            spread: imgsize.0 > imgsize.1
+        });
+        let pageinfo = self.pages.last().unwrap();
 
         let options = zip::write::FileOptions::default();
         let filename = format!("S01P{:06}.png", self.pages.len());
         self.inner.start_file(format!("OEBPS/{}", &filename), options)?;
         self.inner.write_all(&buffer)?;
 
-        //let xml = templates::PAGE_REGULAR_XML.replace("IMGW", &format!("{}",pageinfo.image_size.0))
-        //.replace("IMGH", &format!("{}",pageinfo.image_size.1)).replace("FILENAME", &filename);
+        let xml = templates::PAGE_REGULAR_XML.replace("IMGW", &format!("{}",pageinfo.image_size.0))
+        .replace("IMGH", &format!("{}",pageinfo.image_size.1)).replace("FILENAME", &filename);
         let filename = format!("S01P{:06}.xhtml", self.pages.len());
-        //self.inner.start_file(format!("OEBPS/{}", &filename), options)?;
-        //self.inner.write_all(xml.as_bytes())?;
+        self.inner.start_file(format!("OEBPS/{}", &filename), options)?;
+        self.inner.write_all(xml.as_bytes())?;
 
         return Ok(());
     }
