@@ -10,7 +10,7 @@ use std::io::prelude::*;
 use std::io::BufWriter;
 use std::vec::Vec;
 
-struct PageInfo {
+struct PageImage {
     image_name: String,
     image_size: (u32, u32),
     spread: bool,
@@ -18,7 +18,8 @@ struct PageInfo {
 
 pub struct EpubWriter<W: Write + Seek> {
     metadata: Metadata,
-    pages: std::vec::Vec<PageInfo>,
+    images: std::vec::Vec<PageImage>,
+    spread_allowed: bool,
     cover_added: bool,
     closed: bool,
     inner: zip::ZipWriter<W>,
@@ -28,7 +29,8 @@ impl<W: Write + Seek> EpubWriter<W> {
     pub fn new(inner: W) -> Result<EpubWriter<W>, std::io::Error> {
         let mut output = EpubWriter {
             metadata: Default::default(),
-            pages: std::vec::Vec::default(),
+            images: Vec::default(),
+            spread_allowed: false,
             cover_added: false,
             closed: false,
             inner: zip::ZipWriter::new(inner),
@@ -51,21 +53,33 @@ impl<W: Write + Seek> EpubWriter<W> {
         image: &mut T,
     ) -> Result<(), error::EpubWriterError> {
         let mut buffer: Vec<u8> = Vec::new();
-        image.read_to_end(&mut buffer)?;
 
-        self.pages.push(self.get_page_info(&buffer)?);
-        let pageinfo = self.pages.last().unwrap();
+        image.read_to_end(&mut buffer)?;
+        let page_image = self.get_page_image_info(&buffer)?;
+        if page_image.spread {
+            if !self.spread_allowed {
+                return Err(error::EpubWriterError::PageSortingError {
+                    image_name: page_image.image_name,
+                    page_number: self.images.len() as u16 + 1,
+                });
+            }
+        } else {
+            self.spread_allowed = !self.spread_allowed;
+        }
+
+        self.images.push(page_image);
+        let page_info = self.images.last().unwrap();
 
         let options = zip::write::FileOptions::default();
         self.inner
-            .start_file(format!("OEBPS/{}", &pageinfo.image_name), options)?;
+            .start_file(format!("OEBPS/{}", &page_info.image_name), options)?;
         self.inner.write_all(&buffer)?;
 
         let xml = templates::PAGE_REGULAR_XML
-            .replace("IMGW", &format!("{}", pageinfo.image_size.0))
-            .replace("IMGH", &format!("{}", pageinfo.image_size.1))
-            .replace("FILENAME", &pageinfo.image_name);
-        let filename = format!("S01P{:06}.xhtml", self.pages.len());
+            .replace("IMGW", &format!("{}", page_info.image_size.0))
+            .replace("IMGH", &format!("{}", page_info.image_size.1))
+            .replace("FILENAME", &page_info.image_name);
+        let filename = format!("S01P{:06}.xhtml", self.images.len());
         self.inner
             .start_file(format!("OEBPS/{}", &filename), options)?;
         self.inner.write_all(xml.as_bytes())?;
@@ -83,10 +97,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(());
     }
 
-    fn get_page_info(
-        &self,
-        image_data: &[u8],
-    ) -> Result<PageInfo, error::EpubWriterError> {
+    fn get_page_image_info(&self, image_data: &[u8]) -> Result<PageImage, error::EpubWriterError> {
         let imgfmt = image::guess_format(&image_data)
             .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
         let imgext = match imgfmt {
@@ -99,8 +110,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         let img = image::load_from_memory(&image_data)
             .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
         let imgsize = img.dimensions();
-        return Ok(PageInfo {
-            image_name: format!("S01P{:06}{}", self.pages.len(), imgext),
+        return Ok(PageImage {
+            image_name: format!("S01I{:06}{}", self.images.len(), imgext),
             image_size: imgsize,
             spread: imgsize.0 > imgsize.1,
         });
