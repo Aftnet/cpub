@@ -15,6 +15,10 @@
             "environment": [],
             "console": "integratedTerminal",
             "preLaunchTask": "rust: cargo build",
+            "osx": {
+                "type": "cppdbg",
+                "MIMode": "lldb",
+            }
         }
     ]
 }
