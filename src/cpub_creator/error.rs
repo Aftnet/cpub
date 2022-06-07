@@ -8,10 +8,9 @@ pub enum EpubWriterError {
     #[error("Invalid image")]
     InvalidImageError(#[from] image::ImageError),
 
-    #[error("Spread not allowed at page {page_number} ({image_name})")]
+    #[error("Spread not allowed at page {page_number}")]
     PageSortingError {
-        image_name: String,
-        page_number: u16,
+        page_number: u32,
     },
 
     #[error(transparent)]

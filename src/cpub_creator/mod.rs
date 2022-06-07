@@ -11,8 +11,11 @@ use std::io::BufWriter;
 use std::vec::Vec;
 
 struct PageImage {
-    image_name: String,
-    image_size: (u32, u32),
+    base_name: String,
+    nav_label: Option<String>,
+    extension: &'static str,
+    mime_type: &'static str,
+    size: (u32, u32),
     spread: bool,
 }
 
@@ -22,6 +25,8 @@ pub struct EpubWriter<W: Write + Seek> {
     spread_allowed: bool,
     cover_added: bool,
     closed: bool,
+    current_chapter_number: u32,
+    current_page_number: u32,
     inner: zip::ZipWriter<W>,
 }
 
@@ -33,6 +38,8 @@ impl<W: Write + Seek> EpubWriter<W> {
             spread_allowed: false,
             cover_added: false,
             closed: false,
+            current_chapter_number: 0,
+            current_page_number: 0,
             inner: zip::ZipWriter::new(inner),
         };
 
@@ -51,34 +58,46 @@ impl<W: Write + Seek> EpubWriter<W> {
     pub fn add_image<T: std::io::Read>(
         &mut self,
         image: &mut T,
+        label: &Option<&str>,
     ) -> Result<(), error::EpubWriterError> {
         let mut buffer: Vec<u8> = Vec::new();
-
         image.read_to_end(&mut buffer)?;
-        let page_image = self.get_page_image_info(&buffer)?;
+        let mut page_image = self.get_page_image_info(&buffer)?;
+
+        if label.is_some() || self.current_page_number == 0 {
+            self.current_page_number += 1;
+            self.current_chapter_number = 0;
+        }
+        self.current_chapter_number += 1;
+
+        page_image.base_name = format!(
+            "S01-C{:06}P{:06}",
+            self.current_page_number, self.current_chapter_number
+        );
+        self.images.push(page_image);
+        let page_image = self.images.last().unwrap();
+
         if page_image.spread {
             if !self.spread_allowed {
                 return Err(error::EpubWriterError::PageSortingError {
-                    image_name: page_image.image_name,
-                    page_number: self.images.len() as u16 + 1,
+                    page_number: self.images.len() as u32,
                 });
             }
         } else {
             self.spread_allowed = !self.spread_allowed;
         }
 
-        self.images.push(page_image);
-        let page_info = self.images.last().unwrap();
-
         let options = zip::write::FileOptions::default();
+        let image_filename = format!("OEBPS/{}{}", &page_image.base_name, &page_image.extension);
         self.inner
-            .start_file(format!("OEBPS/{}", &page_info.image_name), options)?;
+            .start_file(format!("OEBPS/{}", &image_filename), options)?;
         self.inner.write_all(&buffer)?;
 
         let xml = templates::PAGE_REGULAR_XML
-            .replace("IMGW", &format!("{}", page_info.image_size.0))
-            .replace("IMGH", &format!("{}", page_info.image_size.1))
-            .replace("FILENAME", &page_info.image_name);
+            .replace("IMGW", &format!("{}", page_image.size.0))
+            .replace("IMGHW", &format!("{}", page_image.size.0 / 2))
+            .replace("IMGH", &format!("{}", page_image.size.1))
+            .replace("FILENAME", &image_filename);
         let filename = format!("S01P{:06}.xhtml", self.images.len());
         self.inner
             .start_file(format!("OEBPS/{}", &filename), options)?;
@@ -97,13 +116,16 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(());
     }
 
-    fn get_page_image_info(&self, image_data: &[u8]) -> Result<PageImage, error::EpubWriterError> {
+    fn get_page_image_info(
+        &mut self,
+        image_data: &[u8],
+    ) -> Result<PageImage, error::EpubWriterError> {
         let imgfmt = image::guess_format(&image_data)
             .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
-        let imgext = match imgfmt {
-            ImageFormat::Bmp => ".bmp",
-            ImageFormat::Jpeg => ".jpg",
-            ImageFormat::Png => ".png",
+        let imgtypeinfo = match imgfmt {
+            ImageFormat::Bmp => (".bmp", "image/bmp"),
+            ImageFormat::Jpeg => (".jpg", "image/jpeg"),
+            ImageFormat::Png => (".png", "image/png"),
             _ => return Err(error::EpubWriterError::UnsupportedImageError),
         };
 
@@ -111,8 +133,11 @@ impl<W: Write + Seek> EpubWriter<W> {
             .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
         let imgsize = img.dimensions();
         return Ok(PageImage {
-            image_name: format!("S01I{:06}{}", self.images.len(), imgext),
-            image_size: imgsize,
+            base_name: String::new(),
+            nav_label: None,
+            extension: imgtypeinfo.0,
+            mime_type: imgtypeinfo.1,
+            size: imgsize,
             spread: imgsize.0 > imgsize.1,
         });
     }
