@@ -139,15 +139,6 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(output);
     }
 
-    pub fn new_at(
-        path: &std::path::Path,
-        metadata: Metadata,
-    ) -> Result<EpubWriter<BufWriter<File>>, std::io::Error> {
-        let f = File::create(path)?;
-        let f = BufWriter::new(f);
-        return EpubWriter::new(f, metadata);
-    }
-
     pub fn metadata(&mut self) -> &mut Metadata {
         &mut self.metadata
     }
@@ -231,4 +222,13 @@ impl<W: Write + std::io::Seek> Drop for EpubWriter<W> {
     fn drop(&mut self) {
         self.close().expect("Unhandled I/O error on close");
     }
+}
+
+pub fn create_at(
+    path: &std::path::Path,
+    metadata: Metadata,
+) -> Result<EpubWriter<BufWriter<File>>, std::io::Error> {
+    let f = File::create(path)?;
+    let f = BufWriter::new(f);
+    return EpubWriter::new(f, metadata);
 }
