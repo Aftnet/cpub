@@ -20,20 +20,86 @@ struct PageImage {
 }
 
 impl PageImage {
+    fn new(
+        image_data: &[u8],
+        nav_label: Option<String>,
+    ) -> Result<PageImage, error::EpubWriterError> {
+        let imgfmt = image::guess_format(&image_data)
+            .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
+        let imgtypeinfo = match imgfmt {
+            ImageFormat::Bmp => (".bmp", "image/bmp"),
+            ImageFormat::Jpeg => (".jpg", "image/jpeg"),
+            ImageFormat::Png => (".png", "image/png"),
+            _ => return Err(error::EpubWriterError::UnsupportedImageError),
+        };
+
+        let img = image::load_from_memory(&image_data)
+            .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
+        let imgsize = img.dimensions();
+
+        return Ok(PageImage {
+            base_name: String::new(),
+            nav_label: nav_label,
+            extension: imgtypeinfo.0,
+            mime_type: imgtypeinfo.1,
+            size: imgsize,
+            spread: imgsize.0 > imgsize.1,
+        });
+    }
+
     pub fn image_file_name(&self) -> String {
         format!("{}{}", self.base_name, self.extension)
     }
 
-    pub fn page_file_name(&self) -> String {
+    pub fn page_file_names(&self) -> Vec<String> {
+        if self.spread {
+            vec![
+                self.page_spread_left_file_name(),
+                self.page_spread_right_file_name(),
+            ]
+        } else {
+            vec![self.page_regular_file_name()]
+        }
+    }
+
+    pub fn generate_pages_xml(&self) -> Vec<(String, String)> {
+        if self.spread {
+            vec![
+                (
+                    self.page_spread_left_file_name(),
+                    self.generate_page_xml(templates::PAGE_SPREAD_L_XML),
+                ),
+                (
+                    self.page_spread_right_file_name(),
+                    self.generate_page_xml(templates::PAGE_SPREAD_R_XML),
+                ),
+            ]
+        } else {
+            vec![(
+                self.page_regular_file_name(),
+                self.generate_page_xml(templates::PAGE_REGULAR_XML),
+            )]
+        }
+    }
+
+    fn page_regular_file_name(&self) -> String {
         format!("{}.xhtml", self.base_name)
     }
 
-    pub fn page_spread_left_file_name(&self) -> String {
+    fn page_spread_left_file_name(&self) -> String {
         format!("{}_L.xhtml", self.base_name)
     }
 
-    pub fn page_spread_right_file_name(&self) -> String {
+    fn page_spread_right_file_name(&self) -> String {
         format!("{}_L.xhtml", self.base_name)
+    }
+
+    fn generate_page_xml(&self, template: &str) -> String {
+        template
+            .replace("IMGW", &format!("{}", &self.size.0))
+            .replace("IMGHW", &format!("{}", &self.size.0 / 2))
+            .replace("IMGH", &format!("{}", &self.size.1))
+            .replace("FILENAME", &self.image_file_name())
     }
 }
 
@@ -76,13 +142,12 @@ impl<W: Write + Seek> EpubWriter<W> {
     pub fn add_image<T: std::io::Read>(
         &mut self,
         image: &mut T,
-        label: &Option<&str>,
+        label: Option<String>,
     ) -> Result<(), error::EpubWriterError> {
         let mut buffer: Vec<u8> = Vec::new();
         image.read_to_end(&mut buffer)?;
-        let mut page_image = self.get_page_image_info(&buffer)?;
-
-        if label.is_some() || self.current_page_number == 0 {
+        let mut page_image = PageImage::new(&buffer, label)?;
+        if page_image.nav_label.is_some() || self.current_page_number == 0 {
             self.current_page_number += 1;
             self.current_chapter_number = 0;
         }
@@ -106,20 +171,15 @@ impl<W: Write + Seek> EpubWriter<W> {
         }
 
         let options = zip::write::FileOptions::default();
-        let image_filename = page_image.image_file_name();
         self.inner
-            .start_file(format!("OEBPS/{}", image_filename), options)?;
+            .start_file(format!("OEBPS/{}", page_image.image_file_name()), options)?;
         self.inner.write_all(&buffer)?;
 
-        let xml = templates::PAGE_REGULAR_XML
-            .replace("IMGW", &format!("{}", page_image.size.0))
-            .replace("IMGHW", &format!("{}", page_image.size.0 / 2))
-            .replace("IMGH", &format!("{}", page_image.size.1))
-            .replace("FILENAME", &image_filename);
-        let filename = format!("S01P{:06}.xhtml", self.images.len());
-        self.inner
-            .start_file(format!("OEBPS/{}", &filename), options)?;
-        self.inner.write_all(xml.as_bytes())?;
+        let pages = page_image.generate_pages_xml();
+        for i in pages {
+            self.inner.start_file(format!("OEBPS/{}", &i.0), options)?;
+            self.inner.write_all(&i.1.as_bytes())?;
+        }
 
         return Ok(());
     }
@@ -132,57 +192,6 @@ impl<W: Write + Seek> EpubWriter<W> {
         self.closed = true;
         self.inner.finish()?;
         return Ok(());
-    }
-
-    fn get_page_image_info(&self, image_data: &[u8]) -> Result<PageImage, error::EpubWriterError> {
-        let imgfmt = image::guess_format(&image_data)
-            .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
-        let imgtypeinfo = match imgfmt {
-            ImageFormat::Bmp => (".bmp", "image/bmp"),
-            ImageFormat::Jpeg => (".jpg", "image/jpeg"),
-            ImageFormat::Png => (".png", "image/png"),
-            _ => return Err(error::EpubWriterError::UnsupportedImageError),
-        };
-
-        let img = image::load_from_memory(&image_data)
-            .map_err(|source| error::EpubWriterError::InvalidImageError(source))?;
-        let imgsize = img.dimensions();
-        return Ok(PageImage {
-            base_name: String::new(),
-            nav_label: None,
-            extension: imgtypeinfo.0,
-            mime_type: imgtypeinfo.1,
-            size: imgsize,
-            spread: imgsize.0 > imgsize.1,
-        });
-    }
-
-    fn generate_pages(image: &PageImage) -> Vec<(String, String)> {
-        fn generate_page_xml(image: &PageImage, template: &str) -> String {
-            template
-                .replace("IMGW", &format!("{}", &image.size.0))
-                .replace("IMGHW", &format!("{}", &image.size.0 / 2))
-                .replace("IMGH", &format!("{}", &image.size.1))
-                .replace("FILENAME", &image.image_file_name())
-        }
-
-        if image.spread {
-            vec![
-                (
-                    image.page_spread_left_file_name(),
-                    generate_page_xml(&image, &templates::PAGE_SPREAD_L_XML),
-                ),
-                (
-                    image.page_spread_right_file_name(),
-                    generate_page_xml(&image, &templates::PAGE_SPREAD_R_XML),
-                ),
-            ]
-        } else {
-            vec![(
-                image.page_file_name(),
-                generate_page_xml(&image, &templates::PAGE_REGULAR_XML),
-            )]
-        }
     }
 
     fn add_static_data(&mut self) -> Result<(), std::io::Error> {
