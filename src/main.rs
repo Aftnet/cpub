@@ -1,11 +1,14 @@
+mod cpub_creator;
+
 use std::fs::File;
 use std::path::Path;
 
-mod cpub_creator;
+use crate::cpub_creator::metadata::Metadata;
+use crate::cpub_creator::EpubWriter;
 
 fn main() {
     println!("Opening");
-    let mut writer = cpub_creator::create_at(Path::new("test.epub")).unwrap();
+    let mut writer = EpubWriter::new_at(Path::new("test.epub"), Metadata::default()).unwrap();
     for i in 0..4 {
         println!("Adding {}", i);
         let mut file = File::open(Path::new("test/img01.png")).unwrap();

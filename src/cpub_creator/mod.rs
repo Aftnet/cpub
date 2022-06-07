@@ -1,5 +1,5 @@
 mod error;
-mod metadata;
+pub mod metadata;
 mod templates;
 
 use image::GenericImageView;
@@ -51,20 +51,24 @@ impl PageImage {
         format!("{}{}", self.base_name, self.extension)
     }
 
-    pub fn page_file_names(&self) -> Vec<String> {
+    pub fn page_file_names(&self, reading_rtl: bool) -> Vec<String> {
         if self.spread {
-            vec![
+            let mut output = vec![
                 self.page_spread_left_file_name(),
                 self.page_spread_right_file_name(),
-            ]
+            ];
+            if reading_rtl {
+                output.reverse();
+            }
+            return output;
         } else {
             vec![self.page_regular_file_name()]
         }
     }
 
-    pub fn generate_pages_xml(&self) -> Vec<(String, String)> {
+    pub fn generate_pages_xml(&self, reading_rtl: bool) -> Vec<(String, String)> {
         if self.spread {
-            vec![
+            let mut output = vec![
                 (
                     self.page_spread_left_file_name(),
                     self.generate_page_xml(templates::PAGE_SPREAD_L_XML),
@@ -73,7 +77,11 @@ impl PageImage {
                     self.page_spread_right_file_name(),
                     self.generate_page_xml(templates::PAGE_SPREAD_R_XML),
                 ),
-            ]
+            ];
+            if reading_rtl {
+                output.reverse();
+            }
+            return output;
         } else {
             vec![(
                 self.page_regular_file_name(),
@@ -115,9 +123,9 @@ pub struct EpubWriter<W: Write + Seek> {
 }
 
 impl<W: Write + Seek> EpubWriter<W> {
-    pub fn new(inner: W) -> Result<EpubWriter<W>, std::io::Error> {
+    pub fn new(inner: W, metadata: Metadata) -> Result<EpubWriter<W>, std::io::Error> {
         let mut output = EpubWriter {
-            metadata: Default::default(),
+            metadata: metadata,
             images: Vec::default(),
             spread_allowed: false,
             cover_added: false,
@@ -129,6 +137,15 @@ impl<W: Write + Seek> EpubWriter<W> {
 
         output.add_static_data()?;
         return Ok(output);
+    }
+
+    pub fn new_at(
+        path: &std::path::Path,
+        metadata: Metadata,
+    ) -> Result<EpubWriter<BufWriter<File>>, std::io::Error> {
+        let f = File::create(path)?;
+        let f = BufWriter::new(f);
+        return EpubWriter::new(f, metadata);
     }
 
     pub fn metadata(&mut self) -> &mut Metadata {
@@ -175,7 +192,7 @@ impl<W: Write + Seek> EpubWriter<W> {
             .start_file(format!("OEBPS/{}", page_image.image_file_name()), options)?;
         self.inner.write_all(&buffer)?;
 
-        let pages = page_image.generate_pages_xml();
+        let pages = page_image.generate_pages_xml(self.metadata.right_to_left());
         for i in pages {
             self.inner.start_file(format!("OEBPS/{}", &i.0), options)?;
             self.inner.write_all(&i.1.as_bytes())?;
@@ -214,10 +231,4 @@ impl<W: Write + std::io::Seek> Drop for EpubWriter<W> {
     fn drop(&mut self) {
         self.close().expect("Unhandled I/O error on close");
     }
-}
-
-pub fn create_at(path: &std::path::Path) -> Result<EpubWriter<BufWriter<File>>, std::io::Error> {
-    let f = File::create(path)?;
-    let f = BufWriter::new(f);
-    return EpubWriter::new(f);
 }
