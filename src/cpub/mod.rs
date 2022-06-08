@@ -7,6 +7,7 @@ pub use metadata::Metadata;
 use pageimage::PageImage;
 use std::io::prelude::*;
 use std::vec::Vec;
+use zip::ZipWriter;
 
 use self::errors::EpubWriterError;
 
@@ -18,7 +19,7 @@ pub struct EpubWriter<W: Write + Seek> {
     closed: bool,
     current_chapter_number: u32,
     current_page_number: u32,
-    inner: zip::ZipWriter<W>,
+    inner: ZipWriter<W>,
 }
 
 impl<W: Write + Seek> EpubWriter<W> {
@@ -80,15 +81,19 @@ impl<W: Write + Seek> EpubWriter<W> {
             self.spread_allowed = !self.spread_allowed;
         }
 
-        let options = zip::write::FileOptions::default();
-        self.inner
-            .start_file(format!("OEBPS/{}", page_image.image_file_name()), options)?;
-        self.inner.write_all(&buffer)?;
+        EpubWriter::add_zip_entry(
+            &mut self.inner,
+            &format!("OEBPS/{}", page_image.image_file_name()),
+            &buffer,
+        )?;
 
         let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
         for i in pages {
-            self.inner.start_file(format!("OEBPS/{}", &i.0), options)?;
-            self.inner.write_all(&i.1.as_bytes())?;
+            EpubWriter::add_zip_entry(
+                &mut self.inner,
+                &format!("OEBPS/{}", &i.0),
+                &i.1.as_bytes(),
+            )?;
         }
 
         return Ok(());
@@ -116,6 +121,17 @@ impl<W: Write + Seek> EpubWriter<W> {
         self.inner.start_file("META-INF/container.xml", options)?;
         write!(self.inner, "{}", templates::CONTAINER_XML)?;
 
+        return Ok(());
+    }
+
+    fn add_zip_entry(
+        writer: &mut ZipWriter<W>,
+        name: &str,
+        data: &[u8],
+    ) -> Result<(), EpubWriterError> {
+        let options = zip::write::FileOptions::default();
+        writer.start_file(name, options)?;
+        writer.write_all(&data)?;
         return Ok(());
     }
 }
