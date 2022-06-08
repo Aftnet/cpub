@@ -41,9 +41,28 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(output);
     }
 
-    pub fn set_cover(&mut self) -> Result<(), EpubWriterError> {
+    pub fn set_cover<T: std::io::Read>(&mut self, image: &mut T) -> Result<(), EpubWriterError> {
         if self.cover_added {
             return Err(EpubWriterError::CoverAlreadySetError);
+        }
+
+        let mut buffer: Vec<u8> = Vec::new();
+        image.read_to_end(&mut buffer)?;
+        let mut page_image = PageImage::new(&buffer, None)?;
+        if page_image.spread {
+            return Err(EpubWriterError::CoverSizeError);
+        }
+
+        page_image.base_name = "S00-Cover".to_string();
+        self.images.insert(0, page_image);
+        let page_image = self.images.first().unwrap();
+
+        let img_filename = page_image.image_file_name();
+        let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
+
+        self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
+        for i in pages {
+            self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
         }
 
         self.cover_added = true;
@@ -58,6 +77,16 @@ impl<W: Write + Seek> EpubWriter<W> {
         let mut buffer: Vec<u8> = Vec::new();
         image.read_to_end(&mut buffer)?;
         let mut page_image = PageImage::new(&buffer, label)?;
+        if page_image.spread {
+            if !self.spread_allowed {
+                return Err(errors::EpubWriterError::PageSortingError {
+                    page_number: self.images.len() as u32,
+                });
+            }
+        } else {
+            self.spread_allowed = !self.spread_allowed;
+        }
+
         if page_image.nav_label.is_some() || self.current_page_number == 0 {
             self.current_page_number += 1;
             self.current_chapter_number = 0;
@@ -72,16 +101,6 @@ impl<W: Write + Seek> EpubWriter<W> {
         let page_image = self.images.last().unwrap();
         let img_filename = page_image.image_file_name();
         let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
-
-        if page_image.spread {
-            if !self.spread_allowed {
-                return Err(errors::EpubWriterError::PageSortingError {
-                    page_number: self.images.len() as u32,
-                });
-            }
-        } else {
-            self.spread_allowed = !self.spread_allowed;
-        }
 
         self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
         for i in pages {

@@ -14,6 +14,9 @@ pub enum EpubWriterError {
     #[error("Cover already set")]
     CoverAlreadySetError,
 
+    #[error("Cover cannot be wider than tall")]
+    CoverSizeError,
+
     #[error("Unsupported image")]
     UnsupportedImageError,
 
