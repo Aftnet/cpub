@@ -70,6 +70,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         );
         self.images.push(page_image);
         let page_image = self.images.last().unwrap();
+        let img_filename = page_image.image_file_name();
+        let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
 
         if page_image.spread {
             if !self.spread_allowed {
@@ -81,19 +83,9 @@ impl<W: Write + Seek> EpubWriter<W> {
             self.spread_allowed = !self.spread_allowed;
         }
 
-        EpubWriter::add_zip_entry(
-            &mut self.inner,
-            &format!("OEBPS/{}", page_image.image_file_name()),
-            &buffer,
-        )?;
-
-        let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
+        self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
         for i in pages {
-            EpubWriter::add_zip_entry(
-                &mut self.inner,
-                &format!("OEBPS/{}", &i.0),
-                &i.1.as_bytes(),
-            )?;
+            self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
         }
 
         return Ok(());
@@ -124,14 +116,10 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(());
     }
 
-    fn add_zip_entry(
-        writer: &mut ZipWriter<W>,
-        name: &str,
-        data: &[u8],
-    ) -> Result<(), EpubWriterError> {
+    fn add_zip_entry(&mut self, name: &str, data: &[u8]) -> Result<(), EpubWriterError> {
         let options = zip::write::FileOptions::default();
-        writer.start_file(name, options)?;
-        writer.write_all(&data)?;
+        self.inner.start_file(name, options)?;
+        self.inner.write_all(&data)?;
         return Ok(());
     }
 }
