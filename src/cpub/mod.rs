@@ -5,9 +5,7 @@ mod templates;
 
 pub use metadata::Metadata;
 use pageimage::PageImage;
-use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufWriter;
 use std::vec::Vec;
 
 use self::errors::EpubWriterError;
@@ -42,7 +40,12 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(output);
     }
 
-    pub fn set_cover(&mut self) -> Result<(), std::io::Error> {
+    pub fn set_cover(&mut self) -> Result<(), EpubWriterError> {
+        if self.cover_added {
+            return Err(EpubWriterError::CoverAlreadySetError);
+        }
+
+        self.cover_added = true;
         return Ok(());
     }
 
@@ -121,13 +124,4 @@ impl<W: Write + std::io::Seek> Drop for EpubWriter<W> {
     fn drop(&mut self) {
         self.close().expect("Unhandled I/O error on close");
     }
-}
-
-pub fn create_at(
-    path: &std::path::Path,
-    metadata: Metadata,
-) -> Result<EpubWriter<BufWriter<File>>, EpubWriterError> {
-    let f = File::create(path)?;
-    let f = BufWriter::new(f);
-    return EpubWriter::new(f, metadata);
 }

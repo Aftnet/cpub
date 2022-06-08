@@ -11,6 +11,9 @@ pub enum EpubWriterError {
     #[error("Invalid metadata")]
     InvalidMetadataError(#[from] MetadataValidationError),
 
+    #[error("Cover already set")]
+    CoverAlreadySetError,
+
     #[error("Unsupported image")]
     UnsupportedImageError,
 
