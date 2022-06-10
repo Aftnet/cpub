@@ -146,7 +146,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         self.add_zip_entry("OEBPS/content.opf", &xml)?;
 
         //to remove
-        let mut f = std::fs::File::create(std::path::Path::new("content.txt")).unwrap();
+        let mut f = std::fs::File::create(std::path::Path::new("test.txt")).unwrap();
         f.write_all(&xml).unwrap();
         return Ok(());
     }
