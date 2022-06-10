@@ -237,13 +237,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         add_element(
             &mut xml_writer,
             "dc:date",
-            Some(
-                &self
-                    .metadata
-                    .publishing_date
-                    .format("YYYY-MM-DD")
-                    .to_string(),
-            ),
+            Some(&self.metadata.publishing_date.format("%Y-%m-%d").to_string()),
             None,
         )?;
         add_element(
