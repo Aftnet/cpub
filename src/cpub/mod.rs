@@ -5,8 +5,10 @@ mod templates;
 
 pub use metadata::Metadata;
 use pageimage::PageImage;
-use std::io::prelude::*;
+use std::io::{prelude::*, Cursor};
 use std::vec::Vec;
+use xml::writer::XmlEvent;
+use xml::{EmitterConfig, EventWriter};
 use zip::ZipWriter;
 
 use self::errors::EpubWriterError;
@@ -110,17 +112,19 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(());
     }
 
-    pub fn close(&mut self) -> Result<(), std::io::Error> {
+    pub fn close(&mut self) -> Result<(), EpubWriterError> {
         if self.closed {
             return Ok(());
         }
 
         self.closed = true;
+        self.add_dynamic_data()?;
         self.inner.finish()?;
+
         return Ok(());
     }
 
-    fn add_static_data(&mut self) -> Result<(), std::io::Error> {
+    fn add_static_data(&mut self) -> Result<(), EpubWriterError> {
         let options = zip::write::FileOptions::default();
 
         self.inner.start_file(
@@ -129,10 +133,56 @@ impl<W: Write + Seek> EpubWriter<W> {
         )?;
         write!(self.inner, "application/epub+zip")?;
 
-        self.inner.start_file("META-INF/container.xml", options)?;
-        write!(self.inner, "{}", templates::CONTAINER_XML)?;
+        self.add_zip_entry(
+            "META-INF/container.xml",
+            templates::CONTAINER_XML.as_bytes(),
+        )?;
 
         return Ok(());
+    }
+
+    fn add_dynamic_data(&mut self) -> Result<(), EpubWriterError> {
+        let xml = self.generate_content_opf()?;
+        self.add_zip_entry("OEBPS/content.opf", &xml)?;
+
+        //to remove
+        let mut f = std::fs::File::create(std::path::Path::new("content.txt")).unwrap();
+        f.write_all(&xml).unwrap();
+        return Ok(());
+    }
+
+    fn generate_content_opf(&mut self) -> xml::writer::Result<Vec<u8>> {
+        let mut buffer = Vec::<u8>::new();
+        let mut xml_writer = EventWriter::new_with_config(
+            Cursor::new(&mut buffer),
+            EmitterConfig {
+                perform_indent: true,
+                ..Default::default()
+            },
+        );
+
+        xml_writer.write(
+            XmlEvent::start_element("package")
+                .default_ns("http://www.idpf.org/2007/opf")
+                .attr("version", "3.0")
+                .attr("prefix", "rendition: http://www.idpf.org/vocab/rendition/# cpublib: https://github.com/Aftnet/CPubLib")
+                .attr("unique-identifier", "bookid")
+        )?;
+        xml_writer.write(
+            XmlEvent::start_element("metadata").ns("dc", "http://purl.org/dc/elements/1.1/"),
+        )?;
+
+        xml_writer.write(XmlEvent::start_element("dc:type"))?;
+        xml_writer.write(XmlEvent::characters("text"))?;
+        xml_writer.write(XmlEvent::end_element())?;
+
+        xml_writer.write(XmlEvent::start_element("dc:identifier").attr("id", "bookid"))?;
+        xml_writer.write(XmlEvent::characters(&self.metadata.id))?;
+        xml_writer.write(XmlEvent::end_element())?;
+
+        xml_writer.write(XmlEvent::end_element())?;
+        xml_writer.write(XmlEvent::end_element())?;
+        return Ok(buffer);
     }
 
     fn add_zip_entry(&mut self, name: &str, data: &[u8]) -> Result<(), EpubWriterError> {

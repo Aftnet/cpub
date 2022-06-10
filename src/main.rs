@@ -16,4 +16,6 @@ fn main() {
         let mut file = File::open(Path::new("test/img01.png")).unwrap();
         writer.add_image(&mut file, Option::None).unwrap();
     }
+
+    writer.close().unwrap();
 }

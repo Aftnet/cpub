@@ -30,5 +30,8 @@ pub enum EpubWriterError {
     IOError(#[from] std::io::Error),
 
     #[error(transparent)]
+    XmlWritingError(#[from] xml::writer::Error),
+
+    #[error(transparent)]
     ZipError(#[from] zip::result::ZipError),
 }
