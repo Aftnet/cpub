@@ -216,6 +216,78 @@ impl<W: Write + Seek> EpubWriter<W> {
             Some(vec![("property", "rendition:layout")]),
         )?;
 
+        add_element(
+            &mut xml_writer,
+            "dc:title",
+            Some(&self.metadata.title),
+            None,
+        )?;
+        add_element(
+            &mut xml_writer,
+            "dc:creator",
+            Some(&self.metadata.author),
+            None,
+        )?;
+        add_element(
+            &mut xml_writer,
+            "dc:publisher",
+            Some(&self.metadata.publisher),
+            None,
+        )?;
+        add_element(
+            &mut xml_writer,
+            "dc:date",
+            Some(
+                &self
+                    .metadata
+                    .publishing_date
+                    .format("YYYY-MM-DD")
+                    .to_string(),
+            ),
+            None,
+        )?;
+        add_element(
+            &mut xml_writer,
+            "dc:language",
+            Some(&self.metadata.language),
+            None,
+        )?;
+        add_element(
+            &mut xml_writer,
+            "dc:description",
+            Some(&self.metadata.description),
+            None,
+        )?;
+        for i in &self.metadata.tags {
+            add_element(&mut xml_writer, "dc:subject", Some(i), None)?;
+        }
+        for i in &self.metadata.custom {
+            add_element(
+                &mut xml_writer,
+                "dc:subject",
+                Some(i.1),
+                Some(vec![("property", &format!("cpublib:{}", i.0))]),
+            )?;
+        }
+        add_element(
+            &mut xml_writer,
+            "dc:source",
+            Some(&self.metadata.source),
+            None,
+        )?;
+        add_element(
+            &mut xml_writer,
+            "dc:relation",
+            Some(&self.metadata.relation),
+            None,
+        )?;
+        add_element(
+            &mut xml_writer,
+            "dc:rights",
+            Some(&self.metadata.copyright),
+            None,
+        )?;
+
         xml_writer.write(XmlEvent::end_element())?;
         xml_writer.write(XmlEvent::end_element())?;
         return Ok(buffer);
