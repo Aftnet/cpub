@@ -2,6 +2,8 @@
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" prefix="rendition: http://www.idpf.org/vocab/rendition/# cpublib: https://github.com/Aftnet/CPubLib" unique-identifier="bookid">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:type>text</dc:type>
-    <dc:identifier id="bookid">8245f36b-3699-444d-8463-48904a1b67ab</dc:identifier>
+    <dc:identifier id="bookid">7dcdd4bd-990a-4105-a58e-4b20691c40be</dc:identifier>
+    <meta property="dcterms:modified">2022-06-10T07:22:15Z</meta>
+    <meta property="rendition:layout">pre-paginated</meta>
   </metadata>
 </package>

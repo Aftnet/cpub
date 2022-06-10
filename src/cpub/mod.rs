@@ -152,6 +152,29 @@ impl<W: Write + Seek> EpubWriter<W> {
     }
 
     fn generate_content_opf(&mut self) -> xml::writer::Result<Vec<u8>> {
+        fn add_element<W: Write>(
+            writer: &mut EventWriter<W>,
+            name: &str,
+            content: Option<&str>,
+            attributes: Option<Vec<(&str, &str)>>,
+        ) -> xml::writer::Result<()> {
+            let mut xml_event = XmlEvent::start_element(name);
+            if attributes.is_some() {
+                for i in attributes.unwrap() {
+                    xml_event = xml_event.attr(i.0, i.1);
+                }
+            }
+
+            writer.write(xml_event)?;
+
+            if content.is_some() {
+                writer.write(XmlEvent::characters(content.unwrap()))?;
+            }
+
+            writer.write(XmlEvent::end_element())?;
+            Ok(())
+        }
+
         let mut buffer = Vec::<u8>::new();
         let mut xml_writer = EventWriter::new_with_config(
             Cursor::new(&mut buffer),
@@ -172,13 +195,26 @@ impl<W: Write + Seek> EpubWriter<W> {
             XmlEvent::start_element("metadata").ns("dc", "http://purl.org/dc/elements/1.1/"),
         )?;
 
-        xml_writer.write(XmlEvent::start_element("dc:type"))?;
-        xml_writer.write(XmlEvent::characters("text"))?;
-        xml_writer.write(XmlEvent::end_element())?;
+        add_element(&mut xml_writer, "dc:type", Some("text"), None)?;
+        add_element(
+            &mut xml_writer,
+            "dc:identifier",
+            Some(&self.metadata.id),
+            Some(vec![("id", "bookid")]),
+        )?;
 
-        xml_writer.write(XmlEvent::start_element("dc:identifier").attr("id", "bookid"))?;
-        xml_writer.write(XmlEvent::characters(&self.metadata.id))?;
-        xml_writer.write(XmlEvent::end_element())?;
+        add_element(
+            &mut xml_writer,
+            "meta",
+            Some(&chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
+            Some(vec![("property", "dcterms:modified")]),
+        )?;
+        add_element(
+            &mut xml_writer,
+            "meta",
+            Some("pre-paginated"),
+            Some(vec![("property", "rendition:layout")]),
+        )?;
 
         xml_writer.write(XmlEvent::end_element())?;
         xml_writer.write(XmlEvent::end_element())?;
