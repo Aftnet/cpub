@@ -283,6 +283,19 @@ impl<W: Write + Seek> EpubWriter<W> {
         )?;
 
         xml_writer.write(XmlEvent::end_element())?;
+
+        xml_writer.write(XmlEvent::start_element("manifest"))?;
+        xml_writer.write(XmlEvent::end_element())?;
+
+        xml_writer.write(XmlEvent::start_element("spine").attr(
+            "page-progression-direction",
+            match self.metadata.right_to_left {
+                true => "rtl",
+                false => "ltr",
+            },
+        ))?;
+        xml_writer.write(XmlEvent::end_element())?;
+
         xml_writer.write(XmlEvent::end_element())?;
         return Ok(buffer);
     }
