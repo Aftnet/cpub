@@ -63,7 +63,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
 
         self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
-        for i in pages {
+        for i in pages.iter() {
             self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
         }
 
@@ -105,7 +105,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
 
         self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
-        for i in pages {
+        for i in pages.iter() {
             self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
         }
 
@@ -159,16 +159,20 @@ impl<W: Write + Seek> EpubWriter<W> {
             attributes: Option<Vec<(&str, &str)>>,
         ) -> xml::writer::Result<()> {
             let mut xml_event = XmlEvent::start_element(name);
-            if attributes.is_some() {
-                for i in attributes.unwrap() {
-                    xml_event = xml_event.attr(i.0, i.1);
+            match attributes {
+                Some(d) => {
+                    for i in d.iter() {
+                        xml_event = xml_event.attr(i.0, i.1);
+                    }
                 }
+                None => {}
             }
 
             writer.write(xml_event)?;
 
-            if content.is_some() {
-                writer.write(XmlEvent::characters(content.unwrap()))?;
+            match content {
+                Some(d) => writer.write(XmlEvent::characters(d))?,
+                None => {}
             }
 
             writer.write(XmlEvent::end_element())?;
@@ -252,10 +256,10 @@ impl<W: Write + Seek> EpubWriter<W> {
             Some(&self.metadata.description),
             None,
         )?;
-        for i in &self.metadata.tags {
+        for i in self.metadata.tags.iter() {
             add_element(&mut xml_writer, "dc:subject", Some(i), None)?;
         }
-        for i in &self.metadata.custom {
+        for i in self.metadata.custom.iter() {
             add_element(
                 &mut xml_writer,
                 "dc:subject",
@@ -285,6 +289,51 @@ impl<W: Write + Seek> EpubWriter<W> {
         xml_writer.write(XmlEvent::end_element())?;
 
         xml_writer.write(XmlEvent::start_element("manifest"))?;
+
+        add_element(
+            &mut xml_writer,
+            "item",
+            None,
+            Some(vec![
+                ("href", "nav.xhtml"),
+                ("id", "nav"),
+                ("media-type", "application/xhtml+xml"),
+                ("properties", "nav"),
+            ]),
+        )?;
+
+        let mut is_first = true;
+        for i in self.images.iter() {
+            match is_first {
+                true => {
+                    add_element(
+                        &mut xml_writer,
+                        "item",
+                        None,
+                        Some(vec![
+                            ("href", &i.image_file_name()),
+                            ("id", &format!("i_{}", i.base_name)),
+                            ("media-type", &i.mime_type),
+                            ("properties", "cover-image"),
+                        ]),
+                    )?;
+                    is_first = false;
+                }
+                false => {
+                    add_element(
+                        &mut xml_writer,
+                        "item",
+                        None,
+                        Some(vec![
+                            ("href", &i.image_file_name()),
+                            ("id", &format!("i_{}", i.base_name)),
+                            ("media-type", &i.mime_type),
+                        ]),
+                    )?;
+                }
+            }
+        }
+
         xml_writer.write(XmlEvent::end_element())?;
 
         xml_writer.write(XmlEvent::start_element("spine").attr(
@@ -294,6 +343,7 @@ impl<W: Write + Seek> EpubWriter<W> {
                 false => "ltr",
             },
         ))?;
+
         xml_writer.write(XmlEvent::end_element())?;
 
         xml_writer.write(XmlEvent::end_element())?;
