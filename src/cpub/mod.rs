@@ -146,6 +146,16 @@ impl<W: Write + Seek> EpubWriter<W> {
         //to remove
         let mut f = std::fs::File::create(std::path::Path::new("test.txt")).unwrap();
         f.write_all(&xml).unwrap();
+        //end
+
+        let xml = self.generate_nav_xml()?;
+        self.add_zip_entry("OEBPS/nav.xhtml", &xml)?;
+
+        //to remove
+        let mut f = std::fs::File::create(std::path::Path::new("test.nav.txt")).unwrap();
+        f.write_all(&xml).unwrap();
+        //end
+
         return Ok(());
     }
 
@@ -376,6 +386,83 @@ impl<W: Write + Seek> EpubWriter<W> {
         xml_writer.write(XmlEvent::end_element())?;
 
         xml_writer.write(XmlEvent::end_element())?;
+        return Ok(buffer);
+    }
+
+    fn generate_nav_xml(&mut self) -> xml::writer::Result<Vec<u8>> {
+        let mut buffer = Vec::<u8>::new();
+        let mut xml_writer = EventWriter::new_with_config(
+            Cursor::new(&mut buffer),
+            EmitterConfig {
+                perform_indent: true,
+                ..Default::default()
+            },
+        );
+
+        xml_writer.write(
+            XmlEvent::start_element("html")
+                .default_ns("http://www.w3.org/1999/xhtml")
+                .ns("epub", "http://www.idpf.org/2007/ops"),
+        )?;
+        xml_writer.write(XmlEvent::start_element("head"))?;
+        xml_writer.write(XmlEvent::start_element("meta").attr("charset", "utf-8"))?;
+        xml_writer.write(XmlEvent::end_element())?;
+        xml_writer.write(XmlEvent::end_element())?;
+
+        xml_writer.write(XmlEvent::start_element("body"))?;
+        xml_writer.write(
+            XmlEvent::start_element("nav")
+                .attr("id", "nav")
+                .attr("epub:type", "toc"),
+        )?;
+        xml_writer.write(XmlEvent::start_element("ol"))?;
+
+        let bookmarks: Vec<&PageImage> = self
+            .images
+            .iter()
+            .filter(|d| d.nav_label.is_some())
+            .collect();
+        if bookmarks.is_empty() {
+            xml_writer.write(XmlEvent::start_element("li"))?;
+            xml_writer.write(
+                XmlEvent::start_element("a").attr(
+                    "href",
+                    self.images
+                        .first()
+                        .unwrap()
+                        .page_file_names(self.metadata.right_to_left)
+                        .first()
+                        .unwrap()
+                        .as_str(),
+                ),
+            )?;
+            xml_writer.write(XmlEvent::characters(self.metadata.title.as_str()))?;
+            xml_writer.write(XmlEvent::end_element())?;
+            xml_writer.write(XmlEvent::end_element())?;
+        } else {
+            for i in bookmarks {
+                xml_writer.write(XmlEvent::start_element("li"))?;
+                xml_writer.write(
+                    XmlEvent::start_element("a").attr(
+                        "href",
+                        i.page_file_names(self.metadata.right_to_left)
+                            .first()
+                            .unwrap()
+                            .as_str(),
+                    ),
+                )?;
+                xml_writer.write(XmlEvent::characters(i.nav_label.as_ref().unwrap().as_str()))?;
+                xml_writer.write(XmlEvent::end_element())?;
+                xml_writer.write(XmlEvent::end_element())?;
+            }
+        }
+
+        xml_writer.write(XmlEvent::end_element())?;
+        xml_writer.write(XmlEvent::end_element())?;
+        xml_writer.write(XmlEvent::end_element())?;
+
+        xml_writer.write(XmlEvent::end_element())?;
+
         return Ok(buffer);
     }
 

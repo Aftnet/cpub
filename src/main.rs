@@ -19,7 +19,9 @@ fn main() {
 
     for i in 0..3 {
         let mut file = File::open(Path::new("test/img01.png")).unwrap();
-        writer.add_image(&mut file, Option::None).unwrap();
+        writer
+            .add_image(&mut file, Option::Some(format!("Bookmark {}", i)))
+            .unwrap();
     }
 
     let mut file = File::open(Path::new("test/img02.png")).unwrap();
