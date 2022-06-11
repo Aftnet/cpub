@@ -415,6 +415,9 @@ impl<W: Write + Seek> EpubWriter<W> {
         xml_writer.write(XmlEvent::start_element("head"))?;
         xml_writer.write(XmlEvent::start_element("meta").attr("charset", "utf-8"))?;
         xml_writer.write(XmlEvent::end_element())?;
+        xml_writer.write(XmlEvent::start_element("title"))?;
+        xml_writer.write(XmlEvent::characters("Navigation"))?;
+        xml_writer.write(XmlEvent::end_element())?;
         xml_writer.write(XmlEvent::end_element())?;
 
         xml_writer.write(XmlEvent::start_element("body"))?;
