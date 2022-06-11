@@ -143,18 +143,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         let xml = self.generate_content_opf()?;
         self.add_zip_entry("OEBPS/content.opf", &xml)?;
 
-        //to remove
-        let mut f = std::fs::File::create(std::path::Path::new("test.txt")).unwrap();
-        f.write_all(&xml).unwrap();
-        //end
-
         let xml = self.generate_nav_xml()?;
         self.add_zip_entry("OEBPS/nav.xhtml", &xml)?;
-
-        //to remove
-        let mut f = std::fs::File::create(std::path::Path::new("test.nav.txt")).unwrap();
-        f.write_all(&xml).unwrap();
-        //end
 
         return Ok(());
     }
