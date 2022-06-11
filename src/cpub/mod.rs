@@ -302,13 +302,14 @@ impl<W: Write + Seek> EpubWriter<W> {
 
         match self.cover.as_ref() {
             Some(i) => {
+                let file_name = i.image_file_name();
                 add_element(
                     &mut xml_writer,
                     "item",
                     None,
                     Some(vec![
-                        ("href", i.image_file_name().as_str()),
-                        ("id", format!("i_{}", i.base_name).as_str()),
+                        ("href", file_name.as_str()),
+                        ("id", format!("i_{}", &file_name).as_str()),
                         ("media-type", i.mime_type),
                         ("properties", "cover-image"),
                     ]),
@@ -320,7 +321,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         let mut is_first = true;
         for i in self.images.iter() {
             let img_file_name = i.image_file_name();
-            let img_id = format!("i_{}", i.base_name);
+            let img_id = format!("i_{}", &img_file_name);
             let mut img_attrs = vec![
                 ("href", img_file_name.as_str()),
                 ("id", img_id.as_str()),
@@ -332,6 +333,20 @@ impl<W: Write + Seek> EpubWriter<W> {
             is_first = false;
 
             add_element(&mut xml_writer, "item", None, Some(img_attrs))?;
+
+            for j in i.page_file_names(self.metadata.right_to_left).iter() {
+                add_element(
+                    &mut xml_writer,
+                    "item",
+                    None,
+                    Some(vec![
+                        ("href", j.as_str()),
+                        ("id", format!("p_{}", j).as_str()),
+                        ("media-type", "application/xhtml+xml"),
+                        ("properties", "svg"),
+                    ]),
+                )?;
+            }
         }
 
         xml_writer.write(XmlEvent::end_element())?;
