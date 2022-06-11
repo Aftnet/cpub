@@ -11,7 +11,7 @@ fn main() {
     let f = BufWriter::new(f);
 
     let mut metadata = Metadata::default();
-    metadata.right_to_left = true;
+    //metadata.right_to_left = true;
     let mut writer = EpubWriter::new(f, metadata).unwrap();
 
     let mut file = File::open(Path::new("test/img01.png")).unwrap();
