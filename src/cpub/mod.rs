@@ -211,7 +211,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         add_element(
             &mut xml_writer,
             "dc:identifier",
-            Some(&self.metadata.id),
+            Some(self.metadata.id.as_str()),
             Some(vec![("id", "bookid")]),
         )?;
 
@@ -231,39 +231,46 @@ impl<W: Write + Seek> EpubWriter<W> {
         add_element(
             &mut xml_writer,
             "dc:title",
-            Some(&self.metadata.title),
+            Some(self.metadata.title.as_str()),
             None,
         )?;
         add_element(
             &mut xml_writer,
             "dc:creator",
-            Some(&self.metadata.author),
+            Some(self.metadata.author.as_str()),
             None,
         )?;
         add_element(
             &mut xml_writer,
             "dc:publisher",
-            Some(&self.metadata.publisher),
+            Some(self.metadata.publisher.as_str()),
             None,
         )?;
         add_element(
             &mut xml_writer,
             "dc:date",
-            Some(&self.metadata.publishing_date.format("%Y-%m-%d").to_string()),
+            Some(
+                self.metadata
+                    .publishing_date
+                    .format("%Y-%m-%d")
+                    .to_string()
+                    .as_str(),
+            ),
             None,
         )?;
         add_element(
             &mut xml_writer,
             "dc:language",
-            Some(&self.metadata.language),
+            Some(self.metadata.language.as_str()),
             None,
         )?;
-        add_element(
-            &mut xml_writer,
-            "dc:description",
-            Some(&self.metadata.description),
-            None,
-        )?;
+        match self.metadata.description.as_ref() {
+            Some(d) => {
+                add_element(&mut xml_writer, "dc:description", Some(d), None)?;
+            }
+            None => {}
+        }
+
         for i in self.metadata.tags.iter() {
             add_element(&mut xml_writer, "dc:subject", Some(i), None)?;
         }
@@ -275,24 +282,25 @@ impl<W: Write + Seek> EpubWriter<W> {
                 Some(vec![("property", &format!("cpublib:{}", i.0))]),
             )?;
         }
-        add_element(
-            &mut xml_writer,
-            "dc:source",
-            Some(&self.metadata.source),
-            None,
-        )?;
-        add_element(
-            &mut xml_writer,
-            "dc:relation",
-            Some(&self.metadata.relation),
-            None,
-        )?;
-        add_element(
-            &mut xml_writer,
-            "dc:rights",
-            Some(&self.metadata.copyright),
-            None,
-        )?;
+
+        match self.metadata.source.as_ref() {
+            Some(d) => {
+                add_element(&mut xml_writer, "dc:source", Some(d), None)?;
+            }
+            None => {}
+        }
+        match self.metadata.relation.as_ref() {
+            Some(d) => {
+                add_element(&mut xml_writer, "dc:relation", Some(d), None)?;
+            }
+            None => {}
+        }
+        match self.metadata.copyright.as_ref() {
+            Some(d) => {
+                add_element(&mut xml_writer, "dc:rights", Some(d), None)?;
+            }
+            None => {}
+        }
 
         xml_writer.write(XmlEvent::end_element())?;
 
