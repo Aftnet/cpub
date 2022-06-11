@@ -76,7 +76,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         if page_image.spread {
             if !self.spread_allowed {
                 return Err(errors::EpubWriterError::PageSortingError {
-                    page_number: self.images.len() as u32,
+                    page_number: (self.images.len() + 1) as u32,
                 });
             }
         } else {
@@ -358,6 +358,14 @@ impl<W: Write + Seek> EpubWriter<W> {
                 false => "ltr",
             },
         ))?;
+
+        for i in self.images.iter() {
+            for j in i.page_file_names(self.metadata.right_to_left).iter() {
+                let idref = format!("p_{}", j);
+                let attrs = vec![("idref", idref.as_str())];
+                add_element(&mut xml_writer, "itemref", None, Some(attrs))?;
+            }
+        }
 
         xml_writer.write(XmlEvent::end_element())?;
 

@@ -87,7 +87,7 @@ impl PageImage {
     }
 
     fn page_spread_right_file_name(&self) -> String {
-        format!("{}_L.xhtml", self.base_name)
+        format!("{}_R.xhtml", self.base_name)
     }
 
     fn generate_page_xml(&self, template: &str) -> String {
