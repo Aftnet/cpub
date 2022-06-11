@@ -15,9 +15,9 @@ use self::errors::EpubWriterError;
 
 pub struct EpubWriter<W: Write + Seek> {
     metadata: Metadata,
-    images: std::vec::Vec<PageImage>,
+    images: Vec<PageImage>,
+    cover: Option<PageImage>,
     spread_allowed: bool,
-    cover_added: bool,
     closed: bool,
     current_chapter_number: u32,
     current_page_number: u32,
@@ -31,8 +31,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         let mut output = EpubWriter {
             metadata: metadata,
             images: Vec::default(),
+            cover: None,
             spread_allowed: false,
-            cover_added: false,
             closed: false,
             current_chapter_number: 0,
             current_page_number: 0,
@@ -44,7 +44,7 @@ impl<W: Write + Seek> EpubWriter<W> {
     }
 
     pub fn set_cover<T: std::io::Read>(&mut self, image: &mut T) -> Result<(), EpubWriterError> {
-        if self.cover_added {
+        if self.cover.is_some() {
             return Err(EpubWriterError::CoverAlreadySetError);
         }
 
@@ -56,18 +56,12 @@ impl<W: Write + Seek> EpubWriter<W> {
         }
 
         page_image.base_name = "S00-Cover".to_string();
-        self.images.insert(0, page_image);
-        let page_image = self.images.first().unwrap();
+        self.cover = Some(page_image);
+        let page_image = self.cover.as_ref().unwrap();
 
         let img_filename = page_image.image_file_name();
-        let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
-
         self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
-        for i in pages.iter() {
-            self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
-        }
 
-        self.cover_added = true;
         return Ok(());
     }
 
@@ -142,6 +136,10 @@ impl<W: Write + Seek> EpubWriter<W> {
     }
 
     fn add_dynamic_data(&mut self) -> Result<(), EpubWriterError> {
+        if self.images.is_empty() {
+            return Err(EpubWriterError::NoPagesError);
+        }
+
         let xml = self.generate_content_opf()?;
         self.add_zip_entry("OEBPS/content.opf", &xml)?;
 
@@ -302,36 +300,38 @@ impl<W: Write + Seek> EpubWriter<W> {
             ]),
         )?;
 
+        match self.cover.as_ref() {
+            Some(i) => {
+                add_element(
+                    &mut xml_writer,
+                    "item",
+                    None,
+                    Some(vec![
+                        ("href", i.image_file_name().as_str()),
+                        ("id", format!("i_{}", i.base_name).as_str()),
+                        ("media-type", i.mime_type),
+                        ("properties", "cover-image"),
+                    ]),
+                )?;
+            }
+            None => {}
+        };
+
         let mut is_first = true;
         for i in self.images.iter() {
-            match is_first {
-                true => {
-                    add_element(
-                        &mut xml_writer,
-                        "item",
-                        None,
-                        Some(vec![
-                            ("href", &i.image_file_name()),
-                            ("id", &format!("i_{}", i.base_name)),
-                            ("media-type", &i.mime_type),
-                            ("properties", "cover-image"),
-                        ]),
-                    )?;
-                    is_first = false;
-                }
-                false => {
-                    add_element(
-                        &mut xml_writer,
-                        "item",
-                        None,
-                        Some(vec![
-                            ("href", &i.image_file_name()),
-                            ("id", &format!("i_{}", i.base_name)),
-                            ("media-type", &i.mime_type),
-                        ]),
-                    )?;
-                }
+            let img_file_name = i.image_file_name();
+            let img_id = format!("i_{}", i.base_name);
+            let mut img_attrs = vec![
+                ("href", img_file_name.as_str()),
+                ("id", img_id.as_str()),
+                ("media-type", i.mime_type),
+            ];
+            if is_first && self.cover.is_none() {
+                img_attrs.push(("properties", "cover-image"));
             }
+            is_first = false;
+
+            add_element(&mut xml_writer, "item", None, Some(img_attrs))?;
         }
 
         xml_writer.write(XmlEvent::end_element())?;
