@@ -157,20 +157,16 @@ impl<W: Write + Seek> EpubWriter<W> {
             attributes: Option<Vec<(&str, &str)>>,
         ) -> xml::writer::Result<()> {
             let mut xml_event = XmlEvent::start_element(name);
-            match attributes {
-                Some(d) => {
-                    for i in d.iter() {
-                        xml_event = xml_event.attr(i.0, i.1);
-                    }
+            if let Some(d) = attributes {
+                for i in d.iter() {
+                    xml_event = xml_event.attr(i.0, i.1);
                 }
-                None => {}
             }
 
             writer.write(xml_event)?;
 
-            match content {
-                Some(d) => writer.write(XmlEvent::characters(d))?,
-                None => {}
+            if let Some(d) = content {
+                writer.write(XmlEvent::characters(d))?;
             }
 
             writer.write(XmlEvent::end_element())?;
@@ -254,11 +250,8 @@ impl<W: Write + Seek> EpubWriter<W> {
             Some(self.metadata.language.as_str()),
             None,
         )?;
-        match self.metadata.description.as_ref() {
-            Some(d) => {
-                add_element(&mut xml_writer, "dc:description", Some(d), None)?;
-            }
-            None => {}
+        if let Some(d) = self.metadata.description.as_ref() {
+            add_element(&mut xml_writer, "dc:description", Some(d), None)?;
         }
 
         for i in self.metadata.tags.iter() {
@@ -273,23 +266,14 @@ impl<W: Write + Seek> EpubWriter<W> {
             )?;
         }
 
-        match self.metadata.source.as_ref() {
-            Some(d) => {
-                add_element(&mut xml_writer, "dc:source", Some(d), None)?;
-            }
-            None => {}
+        if let Some(d) = self.metadata.source.as_ref() {
+            add_element(&mut xml_writer, "dc:source", Some(d), None)?;
         }
-        match self.metadata.relation.as_ref() {
-            Some(d) => {
-                add_element(&mut xml_writer, "dc:relation", Some(d), None)?;
-            }
-            None => {}
+        if let Some(d) = self.metadata.relation.as_ref() {
+            add_element(&mut xml_writer, "dc:relation", Some(d), None)?;
         }
-        match self.metadata.copyright.as_ref() {
-            Some(d) => {
-                add_element(&mut xml_writer, "dc:rights", Some(d), None)?;
-            }
-            None => {}
+        if let Some(d) = self.metadata.copyright.as_ref() {
+            add_element(&mut xml_writer, "dc:rights", Some(d), None)?;
         }
 
         xml_writer.write(XmlEvent::end_element())?;

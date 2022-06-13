@@ -2,9 +2,39 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
+use clap::{App, Arg, SubCommand};
 use cpub::{EpubWriter, Metadata};
 
 fn main() {
+    let matches = App::new("Comic ePub maker")
+        .version("1.0")
+        .author("Aftnet")
+        .about("Create ePubs from images")
+        .arg(
+            Arg::new("title")
+                .short('t')
+                .long("title")
+                .value_name("TITLE")
+                .help("Sets the title")
+                .takes_value(true)
+                .use_delimiter(false),
+        )
+        .subcommand(
+            App::new("batch")
+                .about("controls testing features")
+                .version("1.3")
+                .author("Someone E. <someone_else@other.com>")
+                .arg(
+                    Arg::new("debug")
+                        .short('d')
+                        .help("print debug information verbosely"),
+                ),
+        )
+        .get_matches();
+
+    if let Some(d) = matches.subcommand_matches("batch") {
+        
+    }
     println!("Opening");
 
     let f = File::create(Path::new("test.epub")).unwrap();
