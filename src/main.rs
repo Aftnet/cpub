@@ -33,8 +33,15 @@ fn main() {
         .get_matches();
 
     if let Some(d) = matches.subcommand_matches("batch") {
-        
+        println!("Batch");
+    } else {
+        println!("Non batch");
     }
+
+    if let Some(d) = matches.value_of("title") {
+        println!("Title {}", d);
+    }
+    /*
     println!("Opening");
 
     let f = File::create(Path::new("test.epub")).unwrap();
@@ -58,4 +65,5 @@ fn main() {
     writer.add_image(&mut file, Option::None).unwrap();
 
     writer.close().unwrap();
+     */
 }
