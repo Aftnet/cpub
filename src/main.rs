@@ -192,11 +192,20 @@ fn main() {
      */
 }
 
-fn metadata_from_args(matches: &ArgMatches, batch_number: Option<u32>) -> Metadata {
-    let mut output = Metadata::default();
-    if let Some(d) = matches.value_of(arg_id_title) {
-        output.title = d.to_string();
+fn set_metadata_from_args(target: &mut Metadata, matches: &ArgMatches) {
+    if let Some(d) = matches.value_of(arg_id_author) {
+        target.author = d.to_string();
     }
-
-    return output;
+    if let Some(d) = matches.value_of(arg_id_publisher) {
+        target.publisher = d.to_string();
+    }
+    if let Some(d) = matches.value_of(arg_id_published_date) {
+        target.publisher = d.to_string();
+    }
+    if let Some(d) = matches.value_of(arg_id_publisher) {
+        target.publisher = d.to_string();
+    }
+    if let Some(d) = matches.value_of(arg_id_publisher) {
+        target.publisher = d.to_string();
+    }
 }

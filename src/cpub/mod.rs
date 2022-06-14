@@ -237,7 +237,7 @@ impl<W: Write + Seek> EpubWriter<W> {
             "dc:date",
             Some(
                 self.metadata
-                    .publishing_date
+                    .published_date
                     .format("%Y-%m-%d")
                     .to_string()
                     .as_str(),
