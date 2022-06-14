@@ -7,18 +7,68 @@ use chrono::{DateTime, Utc};
 use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
 
-const arg_id_title: &str = "title";
-const arg_id_author: &str = "author";
-const arg_id_publisher: &str = "publisher";
-const arg_id_published_date: &str = "published-date";
-const arg_id_language: &str = "language";
-const arg_id_description: &str = "description";
-const arg_id_source: &str = "source";
-const arg_id_copyright: &str = "copyright";
-const arg_id_rtl: &str = "rtl";
-const arg_id_tags: &str = "tags";
+const CMD_ID_BATCH: &str = "batch";
 
-const batch_number_placeholder: &str = "%num%";
+const ARG_ID_TITLE: &str = "title";
+const ARG_ID_AUTHOR: &str = "author";
+const ARG_ID_PUBLISHER: &str = "publisher";
+const ARG_ID_PUBLISHED_DATE: &str = "published-date";
+const ARG_ID_LANGUAGE: &str = "language";
+const ARG_ID_DESCRIPTION: &str = "description";
+const ARG_ID_SOURCE: &str = "source";
+const ARG_ID_COPYRIGHT: &str = "copyright";
+const ARG_ID_RTL: &str = "rtl";
+const ARG_ID_TAGS: &str = "tags";
+
+const BATCH_NUMBER_PLACEHOLDER: &str = "%num%";
+
+struct App<'a> {
+    args: &'a ArgMatches,
+}
+
+impl<'a> App<'a> {
+    pub fn new(args: &'a ArgMatches) -> Self {
+        App::<'a> { args }
+    }
+
+    pub fn generate_single(&mut self) {}
+
+    pub fn generate_batch(&mut self) {}
+
+    fn set_metadata_from_args(&self, target: &mut Metadata) -> anyhow::Result<()> {
+        if let Some(d) = self.args.value_of(ARG_ID_AUTHOR) {
+            target.author = d.to_string();
+        }
+        if let Some(d) = self.args.value_of(ARG_ID_PUBLISHER) {
+            target.publisher = d.to_string();
+        }
+        if let Some(d) = self.args.value_of(ARG_ID_PUBLISHED_DATE) {
+            target.published_date = DateTime::parse_from_rfc3339(d)
+                .context("Unable to parse date string")?
+                .with_timezone(&Utc);
+        }
+        if let Some(d) = self.args.value_of(ARG_ID_LANGUAGE) {
+            target.language = d.to_string();
+        }
+        if let Some(d) = self.args.value_of(ARG_ID_DESCRIPTION) {
+            target.description = Some(d.to_string());
+        }
+        if let Some(d) = self.args.value_of(ARG_ID_SOURCE) {
+            target.source = Some(d.to_string());
+        }
+        if let Some(d) = self.args.value_of(ARG_ID_COPYRIGHT) {
+            target.copyright = Some(d.to_string());
+        }
+        if let Some(d) = self.args.values_of(ARG_ID_TAGS) {
+            for i in d {
+                target.tags.insert(i.to_string());
+            }
+        }
+
+        target.right_to_left = self.args.is_present(ARG_ID_RTL);
+        return Ok(());
+    }
+}
 
 fn main() {
     fn arg_from_id<'a>(
@@ -49,7 +99,7 @@ fn main() {
 
     let common_args = vec![
         arg_from_id(
-            arg_id_title,
+            ARG_ID_TITLE,
             Some('t'),
             "TITLE",
             "Set the title",
@@ -58,7 +108,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_author,
+            ARG_ID_AUTHOR,
             Some('a'),
             "AUTHOR",
             "Set the author",
@@ -67,7 +117,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_publisher,
+            ARG_ID_PUBLISHER,
             Some('p'),
             "PUBLISHER",
             "Set the publisher",
@@ -76,7 +126,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_published_date,
+            ARG_ID_PUBLISHED_DATE,
             Some('d'),
             "PUBLISHED-DATE",
             "Set the published date",
@@ -85,7 +135,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_language,
+            ARG_ID_LANGUAGE,
             None,
             "LANGUAGE",
             "Set the language",
@@ -94,7 +144,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_description,
+            ARG_ID_DESCRIPTION,
             None,
             "DESCRIPTION",
             "Set the description",
@@ -103,7 +153,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_source,
+            ARG_ID_SOURCE,
             None,
             "SOURCE",
             "Set the source",
@@ -112,7 +162,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_copyright,
+            ARG_ID_COPYRIGHT,
             None,
             "COPYRIGHT",
             "Set the copyright",
@@ -121,7 +171,7 @@ fn main() {
             false,
         ),
         arg_from_id(
-            arg_id_rtl,
+            ARG_ID_RTL,
             None,
             "RTL",
             "Set the reading order as right to left (manga)",
@@ -129,7 +179,7 @@ fn main() {
             false,
             false,
         ),
-        arg_from_id(arg_id_tags, None, "TAGS", "Set the tags", false, true, true),
+        arg_from_id(ARG_ID_TAGS, None, "TAGS", "Set the tags", false, true, true),
     ];
 
     let matches = Command::new("Comic ePub maker")
@@ -138,7 +188,7 @@ fn main() {
         .about("Create single ePub from images in a directory")
         .args(&common_args)
         .subcommand(
-            Command::new("batch")
+            Command::new(CMD_ID_BATCH)
                 .version(crate_version!())
                 .author(crate_authors!())
                 .about(
@@ -148,17 +198,18 @@ fn main() {
         )
         .get_matches();
 
-    if let Some((command, matches)) = matches.subcommand() {
-        println!("{}", command);
-        if let Some(e) = matches.value_of("title") {
-            println!("Title {}", e);
+    match matches.subcommand() {
+        Some((CMD_ID_BATCH, matches)) => {
+            let mut app = App::new(matches);
+            app.generate_batch();
         }
-    } else {
-        println!("Non batch");
-        if let Some(e) = matches.value_of("title") {
-            println!("Title {}", e);
+        Some(_) => panic!("Unrecognized parsed command. This should not happen"),
+        None => {
+            let mut app = App::new(&matches);
+            app.generate_single();
         }
     }
+
     /*
     println!("Opening");
 
@@ -184,38 +235,4 @@ fn main() {
 
     writer.close().unwrap();
      */
-}
-
-fn set_metadata_from_args(target: &mut Metadata, matches: &ArgMatches) -> anyhow::Result<()> {
-    if let Some(d) = matches.value_of(arg_id_author) {
-        target.author = d.to_string();
-    }
-    if let Some(d) = matches.value_of(arg_id_publisher) {
-        target.publisher = d.to_string();
-    }
-    if let Some(d) = matches.value_of(arg_id_published_date) {
-        target.published_date = DateTime::parse_from_rfc3339(d)
-            .context("Unable to parse date string")?
-            .with_timezone(&Utc);
-    }
-    if let Some(d) = matches.value_of(arg_id_language) {
-        target.language = d.to_string();
-    }
-    if let Some(d) = matches.value_of(arg_id_description) {
-        target.description = Some(d.to_string());
-    }
-    if let Some(d) = matches.value_of(arg_id_source) {
-        target.source = Some(d.to_string());
-    }
-    if let Some(d) = matches.value_of(arg_id_copyright) {
-        target.copyright = Some(d.to_string());
-    }
-    if let Some(d) = matches.values_of(arg_id_tags) {
-        for i in d {
-            target.tags.insert(i.to_string());
-        }
-    }
-
-    target.right_to_left = matches.is_present(arg_id_rtl);
-    return Ok(());
 }
