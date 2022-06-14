@@ -2,78 +2,140 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
-use clap::{crate_authors, crate_version, Arg, Command};
+use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
 
+const arg_id_title: &str = "title";
+const arg_id_author: &str = "author";
+const arg_id_publisher: &str = "publisher";
+const arg_id_published_date: &str = "published-date";
+const arg_id_language: &str = "language";
+const arg_id_description: &str = "description";
+const arg_id_source: &str = "source";
+const arg_id_copyright: &str = "copyright";
+const arg_id_rtl: &str = "rtl";
+const arg_id_tags: &str = "tags";
+
+const batch_number_placeholder: &str = "%num%";
+
 fn main() {
+    fn arg_from_id<'a>(
+        arg_id: &'a str,
+        arg_short: Option<char>,
+        value_name: &'a str,
+        help_text: &'a str,
+        required: bool,
+        takes_value: bool,
+        multiple_valuse: bool,
+    ) -> Arg<'a> {
+        let mut output = Arg::new(arg_id)
+            .long(arg_id)
+            .value_name(value_name)
+            .help(help_text)
+            .required(required)
+            .takes_value(takes_value)
+            .multiple_values(multiple_valuse);
+
+        if let Some(d) = arg_short {
+            output = output.short(d);
+        }
+        if multiple_valuse {
+            output = output.use_value_delimiter(true);
+        }
+        return output;
+    }
+
     let common_args = vec![
-        Arg::new("title")
-            .short('t')
-            .long("title")
-            .value_name("TITLE")
-            .help("Sets the title")
-            .required(true)
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("author")
-            .short('a')
-            .long("author")
-            .value_name("AUTHOR")
-            .help("Sets the author")
-            .required(true)
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("publisher")
-            .short('p')
-            .long("publisher")
-            .value_name("PUBLISHER")
-            .help("Sets the publisher")
-            .required(true)
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("published-date")
-            .short('d')
-            .long("published-date")
-            .value_name("PUBLISHED-DATE")
-            .help("Sets the date of publication")
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("language")
-            .long("language")
-            .value_name("LANGUAGE")
-            .help("Sets the language")
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("description")
-            .long("description")
-            .value_name("DESCRIPTION")
-            .help("Sets the description")
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("source")
-            .long("source")
-            .value_name("SOURCE")
-            .help("Sets the source")
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("copyright")
-            .long("copyright")
-            .value_name("COPYRIGHT")
-            .help("Sets the copyright")
-            .takes_value(true)
-            .multiple_values(false),
-        Arg::new("rtl")
-            .short('r')
-            .long("rtl")
-            .value_name("RTL")
-            .help("Sets the reading order as right to left (manga)")
-            .takes_value(false),
-        Arg::new("tags")
-            .long("tags")
-            .value_name("TAGS")
-            .help("Sets custom tags")
-            .takes_value(true)
-            .use_value_delimiter(true),
+        arg_from_id(
+            arg_id_title,
+            Some('t'),
+            "TITLE",
+            "Set the title",
+            true,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_author,
+            Some('a'),
+            "AUTHOR",
+            "Set the author",
+            true,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_publisher,
+            Some('p'),
+            "PUBLISHER",
+            "Set the publisher",
+            true,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_published_date,
+            Some('d'),
+            "PUBLISHED-DATE",
+            "Set the published date",
+            false,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_language,
+            None,
+            "LANGUAGE",
+            "Set the language",
+            false,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_description,
+            None,
+            "DESCRIPTION",
+            "Set the description",
+            false,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_source,
+            None,
+            "SOURCE",
+            "Set the source",
+            false,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_copyright,
+            None,
+            "COPYRIGHT",
+            "Set the copyright",
+            false,
+            true,
+            false,
+        ),
+        arg_from_id(
+            arg_id_rtl,
+            None,
+            "AUTHOR",
+            "Set the author",
+            false,
+            false,
+            false,
+        ),
+        arg_from_id(
+            arg_id_tags,
+            Some('t'),
+            "TAGS",
+            "Set the tags",
+            false,
+            true,
+            true,
+        ),
     ];
 
     let matches = Command::new("Comic ePub maker")
@@ -92,9 +154,9 @@ fn main() {
         )
         .get_matches();
 
-    if let Some(d) = matches.subcommand() {
-        println!("Batch");
-        if let Some(e) = d.1.value_of("title") {
+    if let Some((command, matches)) = matches.subcommand() {
+        println!("{}", command);
+        if let Some(e) = matches.value_of("title") {
             println!("Title {}", e);
         }
     } else {
@@ -128,4 +190,13 @@ fn main() {
 
     writer.close().unwrap();
      */
+}
+
+fn metadata_from_args(matches: &ArgMatches, batch_number: Option<u32>) -> Metadata {
+    let mut output = Metadata::default();
+    if let Some(d) = matches.value_of(arg_id_title) {
+        output.title = d.to_string();
+    }
+
+    return output;
 }
