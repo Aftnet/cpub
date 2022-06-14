@@ -9,7 +9,14 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/cpub",
-            "args": [],
+            "args": [
+                "-t",
+                "Book Title",
+                "-a",
+                "Author Name",
+                "-p",
+                "Publisher Name"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

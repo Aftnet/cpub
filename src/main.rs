@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
+use anyhow::Context;
+use chrono::{DateTime, Utc};
 use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
 
@@ -121,21 +123,13 @@ fn main() {
         arg_from_id(
             arg_id_rtl,
             None,
-            "AUTHOR",
-            "Set the author",
+            "RTL",
+            "Set the reading order as right to left (manga)",
             false,
             false,
             false,
         ),
-        arg_from_id(
-            arg_id_tags,
-            Some('t'),
-            "TAGS",
-            "Set the tags",
-            false,
-            true,
-            true,
-        ),
+        arg_from_id(arg_id_tags, None, "TAGS", "Set the tags", false, true, true),
     ];
 
     let matches = Command::new("Comic ePub maker")
@@ -192,7 +186,7 @@ fn main() {
      */
 }
 
-fn set_metadata_from_args(target: &mut Metadata, matches: &ArgMatches) {
+fn set_metadata_from_args(target: &mut Metadata, matches: &ArgMatches) -> anyhow::Result<()> {
     if let Some(d) = matches.value_of(arg_id_author) {
         target.author = d.to_string();
     }
@@ -200,12 +194,28 @@ fn set_metadata_from_args(target: &mut Metadata, matches: &ArgMatches) {
         target.publisher = d.to_string();
     }
     if let Some(d) = matches.value_of(arg_id_published_date) {
-        target.publisher = d.to_string();
+        target.published_date = DateTime::parse_from_rfc3339(d)
+            .context("Unable to parse date string")?
+            .with_timezone(&Utc);
     }
-    if let Some(d) = matches.value_of(arg_id_publisher) {
-        target.publisher = d.to_string();
+    if let Some(d) = matches.value_of(arg_id_language) {
+        target.language = d.to_string();
     }
-    if let Some(d) = matches.value_of(arg_id_publisher) {
-        target.publisher = d.to_string();
+    if let Some(d) = matches.value_of(arg_id_description) {
+        target.description = Some(d.to_string());
     }
+    if let Some(d) = matches.value_of(arg_id_source) {
+        target.source = Some(d.to_string());
+    }
+    if let Some(d) = matches.value_of(arg_id_copyright) {
+        target.copyright = Some(d.to_string());
+    }
+    if let Some(d) = matches.values_of(arg_id_tags) {
+        for i in d {
+            target.tags.insert(i.to_string());
+        }
+    }
+
+    target.right_to_left = matches.is_present(arg_id_rtl);
+    return Ok(());
 }
