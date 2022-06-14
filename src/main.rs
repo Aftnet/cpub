@@ -20,7 +20,7 @@ const ARG_ID_COPYRIGHT: &str = "copyright";
 const ARG_ID_RTL: &str = "rtl";
 const ARG_ID_TAGS: &str = "tags";
 
-const BATCH_NUMBER_PLACEHOLDER: &str = "%num%";
+const VOLUME_NUMBER_PLACEHOLDER: &str = "%num%";
 
 struct App<'a> {
     args: &'a ArgMatches,
