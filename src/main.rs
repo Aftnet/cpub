@@ -19,6 +19,7 @@ const ARG_ID_SOURCE: &str = "source";
 const ARG_ID_COPYRIGHT: &str = "copyright";
 const ARG_ID_RTL: &str = "rtl";
 const ARG_ID_TAGS: &str = "tags";
+const ARG_ID_INPUT: &str = "input";
 
 const VOLUME_NUMBER_PLACEHOLDER: &str = "%num%";
 
@@ -77,21 +78,28 @@ fn main() {
         value_name: &'a str,
         help_text: &'a str,
         required: bool,
+        positional: bool,
         takes_value: bool,
-        multiple_valuse: bool,
+        multiple_values: bool,
     ) -> Arg<'a> {
         let mut output = Arg::new(arg_id)
-            .long(arg_id)
             .value_name(value_name)
             .help(help_text)
             .required(required)
             .takes_value(takes_value)
-            .multiple_values(multiple_valuse);
+            .multiple_values(multiple_values);
 
-        if let Some(d) = arg_short {
-            output = output.short(d);
+        match positional {
+            true => {}
+            false => {
+                output = output.long(arg_id);
+                if let Some(d) = arg_short {
+                    output = output.short(d);
+                }
+            }
         }
-        if multiple_valuse {
+
+        if multiple_values {
             output = output.use_value_delimiter(true);
         }
         return output;
@@ -104,6 +112,7 @@ fn main() {
             "TITLE",
             "Set the title",
             true,
+            false,
             true,
             false,
         ),
@@ -113,6 +122,7 @@ fn main() {
             "AUTHOR",
             "Set the author",
             true,
+            false,
             true,
             false,
         ),
@@ -122,6 +132,7 @@ fn main() {
             "PUBLISHER",
             "Set the publisher",
             true,
+            false,
             true,
             false,
         ),
@@ -130,6 +141,7 @@ fn main() {
             Some('d'),
             "PUBLISHED-DATE",
             "Set the published date",
+            false,
             false,
             true,
             false,
@@ -140,6 +152,7 @@ fn main() {
             "LANGUAGE",
             "Set the language",
             false,
+            false,
             true,
             false,
         ),
@@ -148,6 +161,7 @@ fn main() {
             None,
             "DESCRIPTION",
             "Set the description",
+            false,
             false,
             true,
             false,
@@ -158,6 +172,7 @@ fn main() {
             "SOURCE",
             "Set the source",
             false,
+            false,
             true,
             false,
         ),
@@ -166,6 +181,7 @@ fn main() {
             None,
             "COPYRIGHT",
             "Set the copyright",
+            false,
             false,
             true,
             false,
@@ -178,8 +194,28 @@ fn main() {
             false,
             false,
             false,
+            false,
         ),
-        arg_from_id(ARG_ID_TAGS, None, "TAGS", "Set the tags", false, true, true),
+        arg_from_id(
+            ARG_ID_TAGS,
+            None,
+            "TAGS",
+            "Set the tags",
+            false,
+            false,
+            true,
+            true,
+        ),
+        arg_from_id(
+            ARG_ID_INPUT,
+            None,
+            "INPUT",
+            "Set the input folder",
+            true,
+            true,
+            true,
+            true,
+        ),
     ];
 
     let matches = Command::new("Comic ePub maker")
