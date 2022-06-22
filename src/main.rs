@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
-use anyhow::Context;
+use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
@@ -19,7 +19,9 @@ const ARG_ID_SOURCE: &str = "source";
 const ARG_ID_COPYRIGHT: &str = "copyright";
 const ARG_ID_RTL: &str = "rtl";
 const ARG_ID_TAGS: &str = "tags";
+
 const ARG_ID_INPUT: &str = "input";
+const ARG_ID_OUTPUT: &str = "output";
 
 const VOLUME_NUMBER_PLACEHOLDER: &str = "%num%";
 
@@ -32,11 +34,19 @@ impl<'a> App<'a> {
         App::<'a> { args }
     }
 
-    pub fn generate_single(&mut self) {}
+    pub fn generate_single(&mut self) -> Result<()> {
+        return Ok(());
+    }
 
-    pub fn generate_batch(&mut self) {}
+    pub fn generate_batch(&mut self) -> Result<()> {
+        return Ok(());
+    }
 
-    fn set_metadata_from_args(&self, target: &mut Metadata) -> anyhow::Result<()> {
+    fn get_paths() {
+        std::fs::read_dir(path)
+    }
+
+    fn set_metadata_from_args(&self, target: &mut Metadata) -> Result<()> {
         if let Some(d) = self.args.value_of(ARG_ID_AUTHOR) {
             target.author = d.to_string();
         }
@@ -209,12 +219,22 @@ fn main() {
         arg_from_id(
             ARG_ID_INPUT,
             None,
-            "INPUT",
+            "INPUT DIRECTORY",
             "Set the input folder",
             true,
             true,
             true,
+            false,
+        ),
+        arg_from_id(
+            ARG_ID_OUTPUT,
+            None,
+            "OUTPUT DIRECTORY",
+            "Set the output folder",
             true,
+            true,
+            true,
+            false,
         ),
     ];
 

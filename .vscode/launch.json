@@ -15,7 +15,9 @@
                 "-a",
                 "Author Name",
                 "-p",
-                "Publisher Name"
+                "Publisher Name",
+                "test",
+                "."
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
