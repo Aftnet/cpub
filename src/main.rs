@@ -250,7 +250,7 @@ fn create_epub_file(
             let entry_path = d?.path();
             if SUPPORTED_EXTENSIONS
                 .into_iter()
-                .any(|d| entry_path.ends_with(d))
+                .any(|e| entry_path.ends_with(e))
             {
                 let mut file = File::open(entry_path)?;
                 match cover_set {
