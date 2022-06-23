@@ -212,19 +212,18 @@ fn main() {
 }
 
 pub fn generate_single(args: &ArgMatches) -> Result<()> {
-    let inpath = Path::new(args.value_of(ARG_ID_INPUT).unwrap());
-    let inpath = inpath.canonicalize()?;
+    let inpath = Path::new(args.value_of(ARG_ID_INPUT).unwrap()).to_owned();
     if !(inpath.exists() && inpath.is_dir()) {
         return Err(anyhow!("Input path is not a directory or does not exist",));
     }
 
-    let outpath = Path::new(args.value_of(ARG_ID_OUTPUT).unwrap());
-    let outpath = outpath.canonicalize()?;
+    let outpath = Path::new(args.value_of(ARG_ID_OUTPUT).unwrap()).to_owned();
     if !(outpath.exists() && outpath.is_dir()) {
         return Err(anyhow!("Output path is not a directory or does not exist",));
     }
 
     let metadata = metadata_from_args(args)?;
+    create_epub_file(&metadata, &inpath, &outpath)?;
     return Ok(());
 }
 
@@ -235,7 +234,7 @@ pub fn generate_batch(args: &ArgMatches) -> Result<()> {
 fn create_epub_file(
     metadata: &Metadata,
     input_dir_path: &Path,
-    output_file_path: &Path,
+    output_dir_path: &Path,
 ) -> Result<()> {
     fn create_epub_inner(
         metadata: &Metadata,
@@ -246,25 +245,33 @@ fn create_epub_file(
         let f = BufWriter::new(f);
         let mut writer = EpubWriter::new(f, &metadata).unwrap();
 
-        let files = input_dir_path.read_dir()?;
-        let mut file = File::open(Path::new("test/img01.png")).unwrap();
-        writer.set_cover(&mut file).unwrap();
-
-        for i in 0..3 {
-            let mut file = File::open(Path::new("test/img01.png")).unwrap();
-            writer
-                .add_image(&mut file, Option::Some(format!("Bookmark {}", i)))
-                .unwrap();
+        let mut cover_set = false;
+        for d in input_dir_path.read_dir()? {
+            let entry_path = d?.path();
+            if SUPPORTED_EXTENSIONS
+                .into_iter()
+                .any(|d| entry_path.ends_with(d))
+            {
+                let mut file = File::open(entry_path)?;
+                match cover_set {
+                    true => writer.add_image(&mut file, None)?,
+                    false => {
+                        writer.set_cover(&mut file)?;
+                        cover_set = true;
+                    }
+                }
+            }
         }
 
-        let mut file = File::open(Path::new("test/img02.png")).unwrap();
-        writer.add_image(&mut file, Option::None).unwrap();
-
         writer.close()?;
-
         return Ok(());
     }
 
+    let output_file_path = PathBuf::from(format!(
+        "{}/{}.epub",
+        output_dir_path.to_str().unwrap(),
+        metadata.title
+    ));
     let temp_path = PathBuf::from(format!("{}.epubgen", output_file_path.to_str().unwrap()));
     match create_epub_inner(&metadata, &input_dir_path, &temp_path) {
         Ok(()) => {
