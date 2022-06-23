@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
@@ -25,61 +25,7 @@ const ARG_ID_OUTPUT: &str = "output";
 
 const VOLUME_NUMBER_PLACEHOLDER: &str = "%num%";
 
-struct App<'a> {
-    args: &'a ArgMatches,
-}
-
-impl<'a> App<'a> {
-    pub fn new(args: &'a ArgMatches) -> Self {
-        App::<'a> { args }
-    }
-
-    pub fn generate_single(&mut self) -> Result<()> {
-        return Ok(());
-    }
-
-    pub fn generate_batch(&mut self) -> Result<()> {
-        return Ok(());
-    }
-
-    fn get_paths() {
-        std::fs::read_dir(path)
-    }
-
-    fn set_metadata_from_args(&self, target: &mut Metadata) -> Result<()> {
-        if let Some(d) = self.args.value_of(ARG_ID_AUTHOR) {
-            target.author = d.to_string();
-        }
-        if let Some(d) = self.args.value_of(ARG_ID_PUBLISHER) {
-            target.publisher = d.to_string();
-        }
-        if let Some(d) = self.args.value_of(ARG_ID_PUBLISHED_DATE) {
-            target.published_date = DateTime::parse_from_rfc3339(d)
-                .context("Unable to parse date string")?
-                .with_timezone(&Utc);
-        }
-        if let Some(d) = self.args.value_of(ARG_ID_LANGUAGE) {
-            target.language = d.to_string();
-        }
-        if let Some(d) = self.args.value_of(ARG_ID_DESCRIPTION) {
-            target.description = Some(d.to_string());
-        }
-        if let Some(d) = self.args.value_of(ARG_ID_SOURCE) {
-            target.source = Some(d.to_string());
-        }
-        if let Some(d) = self.args.value_of(ARG_ID_COPYRIGHT) {
-            target.copyright = Some(d.to_string());
-        }
-        if let Some(d) = self.args.values_of(ARG_ID_TAGS) {
-            for i in d {
-                target.tags.insert(i.to_string());
-            }
-        }
-
-        target.right_to_left = self.args.is_present(ARG_ID_RTL);
-        return Ok(());
-    }
-}
+pub static SUPPORTED_EXTENSIONS: [&'static str; 4] = [".gif", ".jpeg", ".jpg", ".png"];
 
 fn main() {
     fn arg_from_id<'a>(
@@ -256,39 +202,117 @@ fn main() {
 
     match matches.subcommand() {
         Some((CMD_ID_BATCH, matches)) => {
-            let mut app = App::new(matches);
-            app.generate_batch();
+            generate_batch(matches).unwrap();
         }
         Some(_) => panic!("Unrecognized parsed command. This should not happen"),
         None => {
-            let mut app = App::new(&matches);
-            app.generate_single();
+            generate_single(&matches).unwrap();
+        }
+    }
+}
+
+pub fn generate_single(args: &ArgMatches) -> Result<()> {
+    let inpath = Path::new(args.value_of(ARG_ID_INPUT).unwrap());
+    let inpath = inpath.canonicalize()?;
+    if !(inpath.exists() && inpath.is_dir()) {
+        return Err(anyhow!("Input path is not a directory or does not exist",));
+    }
+
+    let outpath = Path::new(args.value_of(ARG_ID_OUTPUT).unwrap());
+    let outpath = outpath.canonicalize()?;
+    if !(outpath.exists() && outpath.is_dir()) {
+        return Err(anyhow!("Output path is not a directory or does not exist",));
+    }
+
+    let metadata = metadata_from_args(args)?;
+    return Ok(());
+}
+
+pub fn generate_batch(args: &ArgMatches) -> Result<()> {
+    return Ok(());
+}
+
+fn create_epub_file(
+    metadata: &Metadata,
+    input_dir_path: &Path,
+    output_file_path: &Path,
+) -> Result<()> {
+    fn create_epub_inner(
+        metadata: &Metadata,
+        input_dir_path: &Path,
+        output_file_path: &Path,
+    ) -> Result<()> {
+        let f = File::create(output_file_path).unwrap();
+        let f = BufWriter::new(f);
+        let mut writer = EpubWriter::new(f, &metadata).unwrap();
+
+        let files = input_dir_path.read_dir()?;
+        let mut file = File::open(Path::new("test/img01.png")).unwrap();
+        writer.set_cover(&mut file).unwrap();
+
+        for i in 0..3 {
+            let mut file = File::open(Path::new("test/img01.png")).unwrap();
+            writer
+                .add_image(&mut file, Option::Some(format!("Bookmark {}", i)))
+                .unwrap();
+        }
+
+        let mut file = File::open(Path::new("test/img02.png")).unwrap();
+        writer.add_image(&mut file, Option::None).unwrap();
+
+        writer.close()?;
+
+        return Ok(());
+    }
+
+    let temp_path = PathBuf::from(format!("{}.epubgen", output_file_path.to_str().unwrap()));
+    match create_epub_inner(&metadata, &input_dir_path, &temp_path) {
+        Ok(()) => {
+            std::fs::rename(&temp_path, &output_file_path)?;
+            return Ok(());
+        }
+        Err(d) => {
+            if temp_path.exists() {
+                std::fs::remove_file(temp_path)?;
+            }
+            return Err(d);
+        }
+    }
+}
+
+fn metadata_from_args(args: &ArgMatches) -> Result<Metadata> {
+    let mut output = Metadata::default();
+
+    if let Some(d) = args.value_of(ARG_ID_AUTHOR) {
+        output.author = d.to_string();
+    }
+    if let Some(d) = args.value_of(ARG_ID_PUBLISHER) {
+        output.publisher = d.to_string();
+    }
+    if let Some(d) = args.value_of(ARG_ID_PUBLISHED_DATE) {
+        output.published_date = DateTime::parse_from_rfc3339(d)
+            .context("Unable to parse date string")?
+            .with_timezone(&Utc);
+    }
+    if let Some(d) = args.value_of(ARG_ID_LANGUAGE) {
+        output.language = d.to_string();
+    }
+    if let Some(d) = args.value_of(ARG_ID_DESCRIPTION) {
+        output.description = Some(d.to_string());
+    }
+    if let Some(d) = args.value_of(ARG_ID_SOURCE) {
+        output.source = Some(d.to_string());
+    }
+    if let Some(d) = args.value_of(ARG_ID_COPYRIGHT) {
+        output.copyright = Some(d.to_string());
+    }
+    if let Some(d) = args.values_of(ARG_ID_TAGS) {
+        for i in d {
+            output.tags.insert(i.to_string());
         }
     }
 
-    /*
-    println!("Opening");
-
-    let f = File::create(Path::new("test.epub")).unwrap();
-    let f = BufWriter::new(f);
-
-    let mut metadata = Metadata::default();
-    //metadata.right_to_left = true;
-    let mut writer = EpubWriter::new(f, metadata).unwrap();
-
-    let mut file = File::open(Path::new("test/img01.png")).unwrap();
-    writer.set_cover(&mut file).unwrap();
-
-    for i in 0..3 {
-        let mut file = File::open(Path::new("test/img01.png")).unwrap();
-        writer
-            .add_image(&mut file, Option::Some(format!("Bookmark {}", i)))
-            .unwrap();
-    }
-
-    let mut file = File::open(Path::new("test/img02.png")).unwrap();
-    writer.add_image(&mut file, Option::None).unwrap();
-
-    writer.close().unwrap();
-     */
+    output.right_to_left = args.is_present(ARG_ID_RTL);
+    output.validate()?;
+    return Ok(output);
 }

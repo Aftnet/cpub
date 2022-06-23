@@ -15,7 +15,7 @@ impl PageImage {
         let imgfmt = image::guess_format(&image_data)
             .map_err(|source| EpubWriterError::InvalidImageError(source))?;
         let imgtypeinfo = match imgfmt {
-            ImageFormat::Bmp => (".bmp", "image/bmp"),
+            ImageFormat::Gif => (".gif", "image/gif"),
             ImageFormat::Jpeg => (".jpg", "image/jpeg"),
             ImageFormat::Png => (".png", "image/png"),
             _ => return Err(EpubWriterError::UnsupportedImageError),

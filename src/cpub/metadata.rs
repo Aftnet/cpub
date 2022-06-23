@@ -6,6 +6,7 @@ use super::errors::MetadataValidationError;
 
 const DEFAULT_LANGUAGE: &str = "en-us";
 
+#[derive(Clone)]
 pub struct Metadata {
     pub id: String,
     pub title: String,
