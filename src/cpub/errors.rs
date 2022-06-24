@@ -11,6 +11,9 @@ pub enum EpubWriterError {
     #[error("Invalid metadata")]
     InvalidMetadataError(#[from] MetadataValidationError),
 
+    #[error("Already finalized")]
+    FinalizedError(),
+
     #[error("At least one page is required for a valid epub")]
     NoPagesError,
 

@@ -44,6 +44,10 @@ impl<W: Write + Seek> EpubWriter<W> {
     }
 
     pub fn set_cover<T: std::io::Read>(&mut self, image: &mut T) -> Result<(), EpubWriterError> {
+        if self.finalized {
+            return Err(EpubWriterError::FinalizedError());
+        }
+
         if self.cover.is_some() {
             return Err(EpubWriterError::CoverAlreadySetError);
         }
@@ -70,6 +74,10 @@ impl<W: Write + Seek> EpubWriter<W> {
         image: &mut T,
         label: Option<String>,
     ) -> Result<(), EpubWriterError> {
+        if self.finalized {
+            return Err(EpubWriterError::FinalizedError());
+        }
+
         let mut buffer: Vec<u8> = Vec::new();
         image.read_to_end(&mut buffer)?;
         let mut page_image = PageImage::new(&buffer, label)?;
