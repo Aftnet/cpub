@@ -245,7 +245,7 @@ fn create_epub_file(
 
         let image_paths = list_supported_images(input_dir_path)?;
         let mut cover_set = false;
-        for image_path in image_paths {
+        for image_path in image_paths.iter() {
             let mut file = File::open(image_path)?;
             if cover_set {
                 writer.add_image(&mut file, None)?;
@@ -286,7 +286,7 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
     dir_paths.sort_by_key(|d| d.path());
     let dir_paths: Vec<_> = dir_paths.iter().map(|d| d.path()).collect();
 
-    for i in &dir_paths {
+    for i in dir_paths.iter() {
         if i.is_file()
             && SUPPORTED_EXTENSIONS
                 .into_iter()
@@ -295,7 +295,7 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
             output.push(i.clone());
         }
     }
-    for i in &dir_paths {
+    for i in dir_paths.iter() {
         if i.is_dir() {
             output.append(&mut list_supported_images(&i)?);
         }

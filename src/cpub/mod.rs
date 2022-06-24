@@ -410,7 +410,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         )?;
         xml_writer.write(XmlEvent::start_element("ol"))?;
 
-        let bookmarks: Vec<&PageImage> = self
+        let bookmarks: Vec<_> = self
             .images
             .iter()
             .filter(|d| d.nav_label.is_some())
@@ -433,7 +433,7 @@ impl<W: Write + Seek> EpubWriter<W> {
             xml_writer.write(XmlEvent::end_element())?;
             xml_writer.write(XmlEvent::end_element())?;
         } else {
-            for i in bookmarks {
+            for i in bookmarks.into_iter() {
                 xml_writer.write(XmlEvent::start_element("li"))?;
                 xml_writer.write(
                     XmlEvent::start_element("a").attr(
