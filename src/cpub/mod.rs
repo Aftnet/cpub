@@ -25,11 +25,11 @@ pub struct EpubWriter<W: Write + Seek> {
 }
 
 impl<W: Write + Seek> EpubWriter<W> {
-    pub fn new(inner: W, metadata: &Metadata) -> Result<EpubWriter<W>, EpubWriterError> {
+    pub fn new(inner: W, metadata: Metadata) -> Result<EpubWriter<W>, EpubWriterError> {
         metadata.validate()?;
 
         let mut output = EpubWriter {
-            metadata: metadata.clone(),
+            metadata: metadata,
             images: Vec::default(),
             cover: None,
             spread_allowed: false,

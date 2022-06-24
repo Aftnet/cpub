@@ -241,7 +241,7 @@ fn create_epub_file(
     ) -> Result<()> {
         let f = File::create(output_file_path)?;
         let f = BufWriter::new(f);
-        let mut writer = EpubWriter::new(f, &metadata)?;
+        let mut writer = EpubWriter::new(f, metadata.clone())?;
 
         let image_paths = list_supported_images(input_dir_path)?;
         let mut cover_set = false;
