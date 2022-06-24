@@ -282,23 +282,28 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
 
     let mut output = Vec::<PathBuf>::new();
 
-    let mut dir_paths: Vec<_> = input_dir_path.read_dir()?.map(|r| r.unwrap()).collect();
-    dir_paths.sort_by_key(|d| d.path());
-    let dir_paths: Vec<_> = dir_paths.iter().map(|d| d.path()).collect();
+    let mut dir_paths = input_dir_path
+        .read_dir()?
+        .map(|r| r.unwrap().path())
+        .collect::<Vec<_>>();
+    dir_paths.sort();
 
-    for i in dir_paths.iter() {
-        if i.is_file()
-            && SUPPORTED_EXTENSIONS
-                .into_iter()
-                .any(|e| i.to_str().unwrap().ends_with(e))
-        {
-            output.push(i.clone());
+    let mut subdir_paths = Vec::<PathBuf>::new();
+    for i in dir_paths.into_iter() {
+        if i.is_file() {
+            if SUPPORTED_EXTENSIONS
+                .iter()
+                .any(|&e| i.to_str().unwrap().ends_with(e))
+            {
+                output.push(i);
+            }
+        } else {
+            subdir_paths.push(i);
         }
     }
-    for i in dir_paths.iter() {
-        if i.is_dir() {
-            output.append(&mut list_supported_images(&i)?);
-        }
+
+    for i in subdir_paths.into_iter() {
+        output.append(&mut list_supported_images(&i)?);
     }
 
     return Ok(output);
