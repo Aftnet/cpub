@@ -212,12 +212,12 @@ fn main() {
 }
 
 pub fn generate_single(args: &ArgMatches) -> Result<()> {
-    let inpath = Path::new(args.value_of(ARG_ID_INPUT).unwrap()).to_owned();
+    let inpath = PathBuf::from(args.value_of(ARG_ID_INPUT).unwrap());
     if !(inpath.exists() && inpath.is_dir()) {
         return Err(anyhow!("Input path is not a directory or does not exist",));
     }
 
-    let outpath = Path::new(args.value_of(ARG_ID_OUTPUT).unwrap()).to_owned();
+    let outpath = PathBuf::from(args.value_of(ARG_ID_OUTPUT).unwrap());
     if !(outpath.exists() && outpath.is_dir()) {
         return Err(anyhow!("Output path is not a directory or does not exist",));
     }
@@ -241,9 +241,9 @@ fn create_epub_file(
         input_dir_path: &Path,
         output_file_path: &Path,
     ) -> Result<()> {
-        let f = File::create(output_file_path).unwrap();
+        let f = File::create(output_file_path)?;
         let f = BufWriter::new(f);
-        let mut writer = EpubWriter::new(f, &metadata).unwrap();
+        let mut writer = EpubWriter::new(f, &metadata)?;
 
         let mut cover_set = false;
         for d in input_dir_path.read_dir()? {
@@ -267,11 +267,9 @@ fn create_epub_file(
         return Ok(());
     }
 
-    let output_file_path = PathBuf::from(format!(
-        "{}/{}.epub",
-        output_dir_path.to_str().unwrap(),
-        metadata.title
-    ));
+    let mut output_file_path = PathBuf::from(output_dir_path);
+    output_file_path.push(format!("{}.epub", metadata.title));
+
     let temp_path = PathBuf::from(format!("{}.epubgen", output_file_path.to_str().unwrap()));
     match create_epub_inner(&metadata, &input_dir_path, &temp_path) {
         Ok(()) => {
