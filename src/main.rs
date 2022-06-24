@@ -282,11 +282,9 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
 
     let mut output = Vec::<PathBuf>::new();
 
-    let read_dir = input_dir_path.read_dir()?;
-    let mut dir_paths = Vec::<PathBuf>::new();
-    for d in read_dir {
-        dir_paths.push(d?.path());
-    }
+    let mut dir_paths: Vec<_> = input_dir_path.read_dir()?.map(|r| r.unwrap()).collect();
+    dir_paths.sort_by_key(|d| d.path());
+    let dir_paths: Vec<_> = dir_paths.iter().map(|d| d.path()).collect();
 
     for i in &dir_paths {
         if i.is_file()
