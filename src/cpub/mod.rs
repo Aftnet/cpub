@@ -18,7 +18,7 @@ pub struct EpubWriter<W: Write + Seek> {
     images: Vec<PageImage>,
     cover: Option<PageImage>,
     spread_allowed: bool,
-    closed: bool,
+    finalized: bool,
     current_chapter_number: u32,
     current_page_number: u32,
     inner: ZipWriter<W>,
@@ -33,7 +33,7 @@ impl<W: Write + Seek> EpubWriter<W> {
             images: Vec::default(),
             cover: None,
             spread_allowed: false,
-            closed: false,
+            finalized: false,
             current_chapter_number: 0,
             current_page_number: 0,
             inner: zip::ZipWriter::new(inner),
@@ -106,12 +106,12 @@ impl<W: Write + Seek> EpubWriter<W> {
         return Ok(());
     }
 
-    pub fn close(&mut self) -> Result<(), EpubWriterError> {
-        if self.closed {
+    pub fn finalize(&mut self) -> Result<(), EpubWriterError> {
+        if self.finalized {
             return Ok(());
         }
 
-        self.closed = true;
+        self.finalized = true;
         self.add_dynamic_data()?;
         self.inner.finish()?;
 
@@ -456,11 +456,5 @@ impl<W: Write + Seek> EpubWriter<W> {
         self.inner.start_file(name, options)?;
         self.inner.write_all(&data)?;
         return Ok(());
-    }
-}
-
-impl<W: Write + std::io::Seek> Drop for EpubWriter<W> {
-    fn drop(&mut self) {
-        self.close().expect("Unhandled I/O error on close");
     }
 }

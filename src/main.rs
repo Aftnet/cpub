@@ -255,7 +255,7 @@ fn create_epub_file(
             }
         }
 
-        writer.close()?;
+        writer.finalize()?;
         return Ok(());
     }
 
