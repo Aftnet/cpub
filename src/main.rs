@@ -244,8 +244,16 @@ fn create_epub_file(
         let mut writer = EpubWriter::new(f, metadata.clone())?;
 
         let image_paths = list_supported_images(input_dir_path)?;
+        println!(" ({} images)", image_paths.len());
+
         let mut cover_set = false;
+        let mut ctr = 0;
         for image_path in image_paths.iter() {
+            println!(
+                "{:2.0}% complete",
+                (100 * ctr) as f32 / image_paths.len() as f32
+            );
+            ctr += 1;
             let mut file = File::open(image_path)?;
             if cover_set {
                 writer.add_image(&mut file, None).unwrap_or_else(|_| {
@@ -265,6 +273,7 @@ fn create_epub_file(
 
     let mut output_file_path = PathBuf::from(output_dir_path);
     output_file_path.push(format!("{}.epub", metadata.title));
+    print!("Generating {}", output_file_path.to_str().unwrap());
 
     let temp_path = PathBuf::from(format!("{}.epubgen", output_file_path.to_str().unwrap()));
     match create_epub_inner(&metadata, &input_dir_path, &temp_path) {
