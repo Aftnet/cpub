@@ -248,11 +248,11 @@ fn create_epub_file(
         for image_path in image_paths.iter() {
             let mut file = File::open(image_path)?;
             if cover_set {
-                writer.add_image(&mut file, None).unwrap_or_else(|d| {
+                writer.add_image(&mut file, None).unwrap_or_else(|_| {
                     println!("Error processing {}", image_path.to_str().unwrap())
                 });
             } else {
-                writer.set_cover(&mut file).unwrap_or_else(|d| {
+                writer.set_cover(&mut file).unwrap_or_else(|_| {
                     println!("Error processing {}", image_path.to_str().unwrap())
                 });
                 cover_set = true;
