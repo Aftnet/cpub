@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Ok, Result};
 use chrono::{DateTime, Utc};
 use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
@@ -24,8 +24,6 @@ const ARG_ID_INPUT: &str = "input";
 const ARG_ID_OUTPUT: &str = "output";
 
 const VOLUME_NUMBER_PLACEHOLDER: &str = "%num%";
-
-pub static SUPPORTED_EXTENSIONS: [&'static str; 4] = [".gif", ".jpeg", ".jpg", ".png"];
 
 fn main() {
     fn arg_from_id<'a>(
@@ -245,20 +243,15 @@ fn create_epub_file(
         let f = BufWriter::new(f);
         let mut writer = EpubWriter::new(f, &metadata)?;
 
+        let image_paths = list_supported_images(input_dir_path)?;
         let mut cover_set = false;
-        for d in input_dir_path.read_dir()? {
-            let entry_path = d?.path();
-            if SUPPORTED_EXTENSIONS
-                .into_iter()
-                .any(|e| entry_path.ends_with(e))
-            {
-                let mut file = File::open(entry_path)?;
-                match cover_set {
-                    true => writer.add_image(&mut file, None)?,
-                    false => {
-                        writer.set_cover(&mut file)?;
-                        cover_set = true;
-                    }
+        for image_path in image_paths {
+            let mut file = File::open(image_path)?;
+            match cover_set {
+                true => writer.add_image(&mut file, None)?,
+                false => {
+                    writer.set_cover(&mut file)?;
+                    cover_set = true;
                 }
             }
         }
@@ -272,7 +265,7 @@ fn create_epub_file(
 
     let temp_path = PathBuf::from(format!("{}.epubgen", output_file_path.to_str().unwrap()));
     match create_epub_inner(&metadata, &input_dir_path, &temp_path) {
-        Ok(()) => {
+        anyhow::Result::Ok(()) => {
             std::fs::rename(&temp_path, &output_file_path)?;
             return Ok(());
         }
@@ -283,6 +276,31 @@ fn create_epub_file(
             return Err(d);
         }
     }
+}
+
+fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
+    static SUPPORTED_EXTENSIONS: [&'static str; 4] = [".gif", ".jpeg", ".jpg", ".png"];
+
+    let mut output = Vec::<PathBuf>::new();
+
+    let read_dir = input_dir_path.read_dir()?;
+    let mut dir_paths = Vec::<PathBuf>::new();
+    for d in read_dir {
+        dir_paths.push(d?.path());
+    }
+
+    for i in &dir_paths {
+        if i.is_file() && SUPPORTED_EXTENSIONS.into_iter().any(|e| i.ends_with(e)) {
+            output.push(i.clone());
+        }
+    }
+    for i in &dir_paths {
+        if i.is_dir() {
+            output.append(&mut list_supported_images(&i)?);
+        }
+    }
+
+    return Ok(output);
 }
 
 fn metadata_from_args(args: &ArgMatches) -> Result<Metadata> {
