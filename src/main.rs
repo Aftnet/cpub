@@ -250,7 +250,7 @@ fn create_epub_file(
         let mut ctr = 0;
         for image_path in image_paths.iter() {
             println!(
-                "{:2.0}% complete",
+                "{:4.1}% complete",
                 (100 * ctr) as f32 / image_paths.len() as f32
             );
             ctr += 1;
