@@ -413,7 +413,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         let bookmarks: Vec<_> = self
             .images
             .iter()
-            .filter(|d| d.nav_label.is_some())
+            .filter(|&d| d.nav_label.is_some())
             .collect();
         if bookmarks.is_empty() {
             xml_writer.write(XmlEvent::start_element("li"))?;
