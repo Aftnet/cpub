@@ -247,12 +247,11 @@ fn create_epub_file(
         let mut cover_set = false;
         for image_path in image_paths {
             let mut file = File::open(image_path)?;
-            match cover_set {
-                true => writer.add_image(&mut file, None)?,
-                false => {
-                    writer.set_cover(&mut file)?;
-                    cover_set = true;
-                }
+            if cover_set {
+                writer.add_image(&mut file, None)?;
+            } else {
+                writer.set_cover(&mut file)?;
+                cover_set = true;
             }
         }
 
@@ -290,7 +289,11 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
     }
 
     for i in &dir_paths {
-        if i.is_file() && SUPPORTED_EXTENSIONS.into_iter().any(|e| i.ends_with(e)) {
+        if i.is_file()
+            && SUPPORTED_EXTENSIONS
+                .into_iter()
+                .any(|e| i.to_str().unwrap().ends_with(e))
+        {
             output.push(i.clone());
         }
     }
@@ -306,6 +309,9 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
 fn metadata_from_args(args: &ArgMatches) -> Result<Metadata> {
     let mut output = Metadata::default();
 
+    if let Some(d) = args.value_of(ARG_ID_TITLE) {
+        output.title = d.to_string();
+    }
     if let Some(d) = args.value_of(ARG_ID_AUTHOR) {
         output.author = d.to_string();
     }

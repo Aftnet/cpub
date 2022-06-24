@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/target/debug/cpub",
             "args": [
                 "-t",
-                "Book Title",
+                "Test",
                 "-a",
                 "Author Name",
                 "-p",
