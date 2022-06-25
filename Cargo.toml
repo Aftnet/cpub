@@ -1,7 +1,7 @@
 [package]
 name = "cpub"
 version = "0.1.0"
-authors = ["Alberto"]
+authors = ["Aftnet"]
 edition = "2021"
 
 [dependencies]

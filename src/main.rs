@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Ok, Result};
 use chrono::{DateTime, Utc};
-use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
+use clap::{crate_authors, crate_name, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
 
 const CMD_ID_BATCH: &str = "batch";
@@ -182,6 +182,13 @@ fn main() {
         ),
     ];
 
+    println!(
+        "{} v{} ©2022 {}",
+        crate_name!(),
+        crate_version!(),
+        crate_authors!()
+    );
+
     let matches = Command::new("Comic ePub maker")
         .version(crate_version!())
         .author(crate_authors!())
@@ -249,24 +256,26 @@ fn create_epub_file(
         let mut cover_set = false;
         let mut ctr = 0;
         for image_path in image_paths.iter() {
-            println!(
-                "{:4.1}% complete",
-                (100 * ctr) as f32 / image_paths.len() as f32
-            );
-            ctr += 1;
             let mut file = File::open(image_path)?;
             if cover_set {
-                writer.add_image(&mut file, None).unwrap_or_else(|_| {
-                    println!("Error processing {}", image_path.to_str().unwrap())
-                });
+                writer.add_image(&mut file, None).with_context(|| {
+                    format!("Error adding page {}", image_path.to_str().unwrap())
+                })?;
             } else {
-                writer.set_cover(&mut file).unwrap_or_else(|_| {
-                    println!("Error processing {}", image_path.to_str().unwrap())
-                });
+                writer.set_cover(&mut file).with_context(|| {
+                    format!("Error adding cover {}", image_path.to_str().unwrap())
+                })?;
                 cover_set = true;
             }
+
+            ctr += 1;
+            print!(
+                "{:4.1}% complete\r",
+                (100 * ctr) as f32 / image_paths.len() as f32
+            );
         }
 
+        println!("");
         writer.finalize()?;
         return Ok(());
     }
