@@ -279,14 +279,22 @@ pub fn generate_batch(args: &ArgMatches, batch_args: &ArgMatches) -> Result<()> 
             ),
         }
     }
-    let vol_ctr_num_digits = vol_ctr_num_digits;
+    let vol_ctr_fmt_string = format!("0{vol_ctr_num_digits}");
 
     for vol_dir in vol_dirs.iter() {
+        let formatted_vol_number = num_runtime_fmt::NumFmt::from_str(vol_ctr_fmt_string.as_str())
+            .unwrap()
+            .fmt(vol_ctr)
+            .unwrap();
+        vol_ctr += 1;
+
         if title_pattern.matches(VOLUME_NUMBER_PLACEHOLDER).count() > 0 {
-            metadata.title =
-                title_pattern.replace(VOLUME_NUMBER_PLACEHOLDER, format!("{}", vol_ctr).as_str());
+            metadata.title = title_pattern.replace(
+                VOLUME_NUMBER_PLACEHOLDER,
+                format!("{}", formatted_vol_number).as_str(),
+            );
         } else {
-            metadata.title = format!("{} vol. {}", title_pattern, vol_ctr);
+            metadata.title = format!("{} vol. {}", title_pattern, formatted_vol_number);
         }
 
         create_epub_file(&metadata, &vol_dir, &outpath)?;
