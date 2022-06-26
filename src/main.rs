@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Ok, Result};
@@ -323,7 +323,7 @@ fn create_epub_file(
         let mut cover_set = false;
         let mut ctr = 0;
         for image_path in image_paths.iter() {
-            let mut file = File::open(image_path)?;
+            let mut file = BufReader::new(File::open(image_path)?);
             if cover_set {
                 writer.add_image(&mut file, None).with_context(|| {
                     format!("Error adding page {}", image_path.to_str().unwrap())
