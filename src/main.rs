@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Ok, Result};
 use chrono::{DateTime, Utc};
-use clap::{crate_authors, crate_name, crate_version, Arg, ArgMatches, Command};
+use clap::{crate_authors, crate_version, Arg, ArgMatches, Command};
 use cpub::{EpubWriter, Metadata};
 
 const CMD_ID_BATCH: &str = "batch";
@@ -236,22 +236,43 @@ fn main() {
 }
 
 pub fn generate_single(args: &ArgMatches) -> Result<()> {
-    let inpath = PathBuf::from(args.value_of(ARG_ID_INPUT).unwrap());
-    if !(inpath.exists() && inpath.is_dir()) {
-        return Err(anyhow!("Input path is not a directory or does not exist",));
-    }
-
-    let outpath = PathBuf::from(args.value_of(ARG_ID_OUTPUT).unwrap());
-    if !(outpath.exists() && outpath.is_dir()) {
-        return Err(anyhow!("Output path is not a directory or does not exist",));
-    }
-
+    let (inpath, outpath) = io_directories_from_args(args)?;
     let metadata = metadata_from_args(args)?;
     create_epub_file(&metadata, &inpath, &outpath)?;
     return Ok(());
 }
 
 pub fn generate_batch(args: &ArgMatches) -> Result<()> {
+    let (inpath, outpath) = io_directories_from_args(args)?;
+    let mut metadata = metadata_from_args(args)?;
+
+    let mut vol_dirs = inpath
+        .read_dir()?
+        .map(|d| d.unwrap().path())
+        .filter(|d| d.is_dir())
+        .collect::<Vec<_>>();
+    vol_dirs.sort();
+
+    let title_pattern = metadata.title.clone();
+
+    let mut vol_ctr = 1u32;
+    if let Some(vsn_str) = args.value_of(ARG_ID_BATCH_VOLUME_START_NUMBER) {
+        if let Some(vsn_u32) = atoi::atoi::<u32>(vsn_str.as_bytes()) {
+            vol_ctr = vsn_u32;
+        }
+    }
+
+    for vol_dir in vol_dirs.iter() {
+        if title_pattern.matches(VOLUME_NUMBER_PLACEHOLDER).count() > 0 {
+            metadata.title =
+                title_pattern.replace(VOLUME_NUMBER_PLACEHOLDER, format!("{}", vol_ctr).as_str());
+        } else {
+            metadata.title = format!("{} vol. {}", title_pattern, vol_ctr);
+        }
+        
+        create_epub_file(&metadata, &vol_dir, &outpath)?;
+    }
+
     return Ok(());
 }
 
@@ -325,7 +346,7 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
 
     let mut dir_paths = input_dir_path
         .read_dir()?
-        .map(|r| r.unwrap().path())
+        .map(|d| d.unwrap().path())
         .collect::<Vec<_>>();
     dir_paths.sort();
 
@@ -348,6 +369,20 @@ fn list_supported_images(input_dir_path: &Path) -> Result<Vec<PathBuf>> {
     }
 
     return Ok(output);
+}
+
+fn io_directories_from_args(args: &ArgMatches) -> Result<(PathBuf, PathBuf)> {
+    let inpath = PathBuf::from(args.value_of(ARG_ID_INPUT).unwrap());
+    if !(inpath.exists() && inpath.is_dir()) {
+        return Err(anyhow!("Input path is not a directory or does not exist",));
+    }
+
+    let outpath = PathBuf::from(args.value_of(ARG_ID_OUTPUT).unwrap());
+    if !(outpath.exists() && outpath.is_dir()) {
+        return Err(anyhow!("Output path is not a directory or does not exist",));
+    }
+
+    return Ok((inpath, outpath));
 }
 
 fn metadata_from_args(args: &ArgMatches) -> Result<Metadata> {
