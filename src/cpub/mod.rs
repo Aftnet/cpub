@@ -62,9 +62,13 @@ impl<W: Write + Seek> EpubWriter<W> {
         page_image.base_name = "S00-Cover".to_string();
         self.cover = Some(page_image);
         let page_image = self.cover.as_ref().unwrap();
-
         let img_filename = page_image.image_file_name();
+        let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
+
         self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
+        for i in pages.iter() {
+            self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
+        }
 
         return Ok(());
     }
