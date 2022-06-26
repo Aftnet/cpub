@@ -19,6 +19,8 @@ const ARG_ID_SOURCE: &str = "source";
 const ARG_ID_COPYRIGHT: &str = "copyright";
 const ARG_ID_RTL: &str = "rtl";
 const ARG_ID_TAGS: &str = "tags";
+const ARG_ID_BATCH_VOLUME_START_NUMBER: &str = "vsn";
+const ARG_ID_BATCH_VOLUME_NUM_DIGITS: &str = "vnd";
 
 const ARG_ID_INPUT: &str = "input";
 const ARG_ID_OUTPUT: &str = "output";
@@ -59,7 +61,7 @@ fn main() {
         return output;
     }
 
-    let common_args = vec![
+    let common_args = [
         arg_from_id(
             ARG_ID_TITLE,
             Some('t'),
@@ -182,12 +184,28 @@ fn main() {
         ),
     ];
 
-    println!(
-        "{} v{} ©2022 {}",
-        crate_name!(),
-        crate_version!(),
-        crate_authors!()
-    );
+    let batch_args = [
+        arg_from_id(
+            ARG_ID_BATCH_VOLUME_START_NUMBER,
+            None,
+            "VOLUME-START-NUMBER",
+            "Set the first volume number for the batch",
+            false,
+            false,
+            true,
+            false,
+        ),
+        arg_from_id(
+            ARG_ID_BATCH_VOLUME_NUM_DIGITS,
+            None,
+            "VOLUME-NUM-DIGITS",
+            "Set the number of digits used to format the volume number when generating titles",
+            false,
+            false,
+            true,
+            false,
+        ),
+    ];
 
     let matches = Command::new("Comic ePub maker")
         .version(crate_version!())
@@ -201,7 +219,8 @@ fn main() {
                 .about(
                     "Create multiple ePubs from directory containig other directories with images",
                 )
-                .args(&common_args),
+                .args(&common_args)
+                .args(&batch_args),
         )
         .get_matches();
 
