@@ -270,6 +270,17 @@ pub fn generate_batch(args: &ArgMatches, batch_args: &ArgMatches) -> Result<()> 
         }
     }
 
+    let mut vol_ctr_num_digits = u32::max(2u32, (vol_dirs.len() as f32).log10() as u32);
+    if let Some(vnd_str) = batch_args.value_of(ARG_ID_BATCH_VOLUME_NUM_DIGITS) {
+        match atoi::atoi::<u32>(vnd_str.as_bytes()) {
+            Some(vnd_u32) => vol_ctr_num_digits = vnd_u32,
+            None => println!(
+                "Unable to parse start number of digits for volume number formatting. Defaulting to {}", vol_ctr_num_digits
+            ),
+        }
+    }
+    let vol_ctr_num_digits = vol_ctr_num_digits;
+
     for vol_dir in vol_dirs.iter() {
         if title_pattern.matches(VOLUME_NUMBER_PLACEHOLDER).count() > 0 {
             metadata.title =
