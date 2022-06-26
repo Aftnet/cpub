@@ -61,7 +61,7 @@ fn main() {
         return output;
     }
 
-    let common_args = [
+    let main_args = [
         arg_from_id(
             ARG_ID_TITLE,
             Some('t'),
@@ -211,7 +211,7 @@ fn main() {
         .version(crate_version!())
         .author(crate_authors!())
         .about("Create single ePub from images in a directory")
-        .args(&common_args)
+        .args(&main_args)
         .subcommand(
             Command::new(CMD_ID_BATCH)
                 .version(crate_version!())
@@ -219,14 +219,13 @@ fn main() {
                 .about(
                     "Create multiple ePubs from directory containig other directories with images",
                 )
-                .args(&common_args)
                 .args(&batch_args),
         )
         .get_matches();
 
     match matches.subcommand() {
-        Some((CMD_ID_BATCH, matches)) => {
-            generate_batch(matches).unwrap();
+        Some((CMD_ID_BATCH, batch_matches)) => {
+            generate_batch(&matches, batch_matches).unwrap();
         }
         Some(_) => panic!("Unrecognized parsed command. This should not happen"),
         None => {
@@ -242,7 +241,7 @@ pub fn generate_single(args: &ArgMatches) -> Result<()> {
     return Ok(());
 }
 
-pub fn generate_batch(args: &ArgMatches) -> Result<()> {
+pub fn generate_batch(args: &ArgMatches, batch_args: &ArgMatches) -> Result<()> {
     let (inpath, outpath) = io_directories_from_args(args)?;
     let mut metadata = metadata_from_args(args)?;
 
@@ -253,12 +252,21 @@ pub fn generate_batch(args: &ArgMatches) -> Result<()> {
         .collect::<Vec<_>>();
     vol_dirs.sort();
 
+    if vol_dirs.is_empty() {
+        println!("No directories to create volumes from found. Aborting");
+        return Ok(());
+    }
+
     let title_pattern = metadata.title.clone();
 
     let mut vol_ctr = 1u32;
-    if let Some(vsn_str) = args.value_of(ARG_ID_BATCH_VOLUME_START_NUMBER) {
-        if let Some(vsn_u32) = atoi::atoi::<u32>(vsn_str.as_bytes()) {
-            vol_ctr = vsn_u32;
+    if let Some(vsn_str) = batch_args.value_of(ARG_ID_BATCH_VOLUME_START_NUMBER) {
+        match atoi::atoi::<u32>(vsn_str.as_bytes()) {
+            Some(vsn_u32) => vol_ctr = vsn_u32,
+            None => println!(
+                "Unable to parse start volume number. Defaulting to {}",
+                vol_ctr
+            ),
         }
     }
 
@@ -269,7 +277,7 @@ pub fn generate_batch(args: &ArgMatches) -> Result<()> {
         } else {
             metadata.title = format!("{} vol. {}", title_pattern, vol_ctr);
         }
-        
+
         create_epub_file(&metadata, &vol_dir, &outpath)?;
     }
 
