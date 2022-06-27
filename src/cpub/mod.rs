@@ -304,22 +304,32 @@ impl<W: Write + Seek> EpubWriter<W> {
             ]),
         )?;
 
-        match self.cover.as_ref() {
-            Some(i) => {
-                let file_name = i.image_file_name();
-                add_element(
-                    &mut xml_writer,
-                    "item",
-                    None,
-                    Some(vec![
-                        ("href", file_name.as_str()),
-                        ("id", format!("i_{}", &file_name).as_str()),
-                        ("media-type", i.mime_type),
-                        ("properties", "cover-image"),
-                    ]),
-                )?;
-            }
-            None => {}
+        if let Some(ref cover) = self.cover {
+            let image_file_name = cover.image_file_name();
+            add_element(
+                &mut xml_writer,
+                "item",
+                None,
+                Some(vec![
+                    ("href", image_file_name.as_str()),
+                    ("id", format!("i_{}", image_file_name).as_str()),
+                    ("media-type", cover.mime_type),
+                    ("properties", "cover-image"),
+                ]),
+            )?;
+
+            let page_file_name = cover.cover_file_name();
+            add_element(
+                &mut xml_writer,
+                "item",
+                None,
+                Some(vec![
+                    ("href", page_file_name.as_str()),
+                    ("id", format!("p_{}", page_file_name).as_str()),
+                    ("media-type", "application/xhtml+xml"),
+                    ("properties", "svg"),
+                ]),
+            )?;
         };
 
         let mut is_first = true;
@@ -362,6 +372,13 @@ impl<W: Write + Seek> EpubWriter<W> {
                 false => "ltr",
             },
         ))?;
+
+        if let Some(ref cover) = self.cover {
+            let idref = format!("p_{}", cover.cover_file_name());
+            let attrs = vec![("idref", idref.as_str()), ("linear", "no")];
+
+            add_element(&mut xml_writer, "itemref", None, Some(attrs))?;
+        }
 
         for i in self.images.iter() {
             for j in i.page_file_names(self.metadata.right_to_left).iter() {

@@ -39,6 +39,10 @@ impl PageImage {
         format!("{}{}", self.base_name, self.extension)
     }
 
+    pub fn cover_file_name(&self) -> String {
+        return self.page_regular_file_name();
+    }
+
     pub fn page_file_names(&self, reading_rtl: bool) -> Vec<String> {
         if self.spread {
             let mut output = vec![
