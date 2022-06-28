@@ -43,6 +43,10 @@ impl PageImage {
         return self.page_regular_file_name();
     }
 
+    pub fn spacer_file_name(&self) -> String {
+        return self.page_spacer_file_name();
+    }
+
     pub fn page_file_names(&self, reading_rtl: bool) -> Vec<String> {
         if self.spread {
             let mut output = vec![
@@ -82,6 +86,13 @@ impl PageImage {
         }
     }
 
+    pub fn generate_spacer_page(&self) -> (String, String) {
+        (
+            self.page_spacer_file_name(),
+            self.generate_page_xml(templates::PAGE_SPACER_XML),
+        )
+    }
+
     fn page_regular_file_name(&self) -> String {
         format!("{}.xhtml", self.base_name)
     }
@@ -92,6 +103,10 @@ impl PageImage {
 
     fn page_spread_right_file_name(&self) -> String {
         format!("{}_R.xhtml", self.base_name)
+    }
+
+    fn page_spacer_file_name(&self) -> String {
+        format!("{}_Spacer.xhtml", self.base_name)
     }
 
     fn generate_page_xml(&self, template: &str) -> String {

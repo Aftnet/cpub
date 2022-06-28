@@ -13,8 +13,6 @@ use zip::ZipWriter;
 
 use self::errors::EpubWriterError;
 
-const COVER_SPACER_NAME: &str = "S00_Spacer.xhtml";
-
 pub struct EpubWriter<W: Write + Seek> {
     metadata: Metadata,
     images: Vec<PageImage>,
@@ -72,8 +70,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
 
         self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
-        for i in pages.iter() {
-            self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
+        for (page_name, page_content) in pages.iter() {
+            self.add_zip_entry(&format!("OEBPS/{}", page_name), page_content.as_bytes())?;
         }
 
         return Ok(());
@@ -125,8 +123,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         let pages = page_image.generate_pages_xml(self.metadata.right_to_left);
 
         self.add_zip_entry(&format!("OEBPS/{}", &img_filename), &buffer)?;
-        for i in pages.iter() {
-            self.add_zip_entry(&format!("OEBPS/{}", &i.0), &i.1.as_bytes())?;
+        for (page_name, page_content) in pages.iter() {
+            self.add_zip_entry(&format!("OEBPS/{}", page_name), page_content.as_bytes())?;
         }
 
         return Ok(());
@@ -140,10 +138,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         self.finalized = true;
 
         if self.cover_spacer_required {
-            self.add_zip_entry(
-                &format!("OEBPS/{}", COVER_SPACER_NAME),
-                templates::PAGE_SPACER_XML.as_bytes(),
-            )?;
+            let (spacer_name, spacer_content) = self.cover.as_ref().unwrap().generate_spacer_page();
+            self.add_zip_entry(&format!("OEBPS/{}", spacer_name), spacer_content.as_bytes())?;
         }
         self.add_dynamic_data()?;
         self.inner.finish()?;
@@ -329,12 +325,12 @@ impl<W: Write + Seek> EpubWriter<W> {
         for i in self.metadata.tags.iter() {
             add_element(&mut xml_writer, "dc:subject", Some(i), None)?;
         }
-        for i in self.metadata.custom.iter() {
+        for (key, value) in self.metadata.custom.iter() {
             add_element(
                 &mut xml_writer,
                 "dc:subject",
-                Some(i.1),
-                Some(vec![("property", &format!("cpublib:{}", i.0))]),
+                Some(value),
+                Some(vec![("property", &format!("cpublib:{}", key))]),
             )?;
         }
 
@@ -374,7 +370,7 @@ impl<W: Write + Seek> EpubWriter<W> {
         manifest_add_page(&mut xml_writer, cover.cover_file_name().as_str())?;
 
         if self.cover_spacer_required {
-            manifest_add_page(&mut xml_writer, COVER_SPACER_NAME)?;
+            manifest_add_page(&mut xml_writer, cover.spacer_file_name().as_str())?;
         }
 
         for i in self.images.iter() {
@@ -411,7 +407,7 @@ impl<W: Write + Seek> EpubWriter<W> {
                 &mut xml_writer,
                 "itemref",
                 None,
-                Some(vec![("idref", COVER_SPACER_NAME)]),
+                Some(vec![("idref", cover.spacer_file_name().as_str())]),
             )?;
         }
 
