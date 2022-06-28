@@ -13,6 +13,8 @@ use zip::ZipWriter;
 
 use self::errors::EpubWriterError;
 
+const COVER_SPACER_NAME: &str = "S00_Spacer.xhtml";
+
 pub struct EpubWriter<W: Write + Seek> {
     metadata: Metadata,
     images: Vec<PageImage>,
@@ -136,6 +138,13 @@ impl<W: Write + Seek> EpubWriter<W> {
         }
 
         self.finalized = true;
+
+        if self.cover_spacer_required {
+            self.add_zip_entry(
+                &format!("OEBPS/{}", COVER_SPACER_NAME),
+                templates::PAGE_SPACER_XML.as_bytes(),
+            )?;
+        }
         self.add_dynamic_data()?;
         self.inner.finish()?;
 
@@ -364,6 +373,10 @@ impl<W: Write + Seek> EpubWriter<W> {
         )?;
         manifest_add_page(&mut xml_writer, cover.cover_file_name().as_str())?;
 
+        if self.cover_spacer_required {
+            manifest_add_page(&mut xml_writer, COVER_SPACER_NAME)?;
+        }
+
         for i in self.images.iter() {
             manifest_add_image(
                 &mut xml_writer,
@@ -392,6 +405,15 @@ impl<W: Write + Seek> EpubWriter<W> {
             None,
             Some(vec![("idref", cover.cover_file_name().as_str())]),
         )?;
+
+        if self.cover_spacer_required {
+            add_element(
+                &mut xml_writer,
+                "itemref",
+                None,
+                Some(vec![("idref", COVER_SPACER_NAME)]),
+            )?;
+        }
 
         for i in self.images.iter() {
             for j in i.page_file_names(self.metadata.right_to_left).iter() {
