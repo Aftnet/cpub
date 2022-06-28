@@ -17,10 +17,12 @@ pub struct EpubWriter<W: Write + Seek> {
     metadata: Metadata,
     images: Vec<PageImage>,
     cover: Option<PageImage>,
-    spread_allowed: bool,
+    cover_spacer_required: bool,
+    spread_added: bool,
     finalized: bool,
     current_chapter_number: u32,
     current_page_number: u32,
+    total_pages_number: u32,
     inner: ZipWriter<W>,
 }
 
@@ -32,10 +34,12 @@ impl<W: Write + Seek> EpubWriter<W> {
             metadata: metadata,
             images: Vec::default(),
             cover: None,
-            spread_allowed: false,
+            cover_spacer_required: false,
+            spread_added: false,
             finalized: false,
             current_chapter_number: 0,
             current_page_number: 0,
+            total_pages_number: 0,
             inner: zip::ZipWriter::new(inner),
         };
 
@@ -86,13 +90,21 @@ impl<W: Write + Seek> EpubWriter<W> {
         image.read_to_end(&mut buffer)?;
         let mut page_image = PageImage::new(&buffer, label)?;
         if page_image.spread {
-            if !self.spread_allowed {
-                return Err(errors::EpubWriterError::PageSortingError {
-                    page_number: (self.images.len() + 1) as u32,
-                });
+            if self.total_pages_number % 2 == 0 {
+                self.total_pages_number += 2;
+            } else {
+                if self.spread_added == false {
+                    self.cover_spacer_required = true;
+                    self.total_pages_number += 1;
+                } else {
+                    return Err(errors::EpubWriterError::PageSortingError {
+                        page_number: (self.images.len() + 1) as u32,
+                    });
+                }
             }
+            self.spread_added = true;
         } else {
-            self.spread_allowed = !self.spread_allowed;
+            self.total_pages_number += 1;
         }
 
         if page_image.nav_label.is_some() || self.current_page_number == 0 {
@@ -148,6 +160,10 @@ impl<W: Write + Seek> EpubWriter<W> {
     }
 
     fn add_dynamic_data(&mut self) -> Result<(), EpubWriterError> {
+        if self.cover.is_none() {
+            return Err(EpubWriterError::CoverNotSetError);
+        }
+
         if self.images.is_empty() {
             return Err(EpubWriterError::NoPagesError);
         }
@@ -183,6 +199,26 @@ impl<W: Write + Seek> EpubWriter<W> {
 
             writer.write(XmlEvent::end_element())?;
             Ok(())
+        }
+
+        fn manifest_add_image<W: Write>(
+            xml_writer: &mut EventWriter<W>,
+            base_name: &str,
+            file_name: &str,
+            mime_type: &str,
+            is_cover: bool,
+        ) -> xml::writer::Result<()> {
+            let id = format!("i_{}", base_name);
+            let mut attrs = vec![
+                ("href", file_name),
+                ("id", id.as_str()),
+                ("media-type", mime_type),
+            ];
+            if is_cover {
+                attrs.push(("properties", "cover-image"));
+            }
+
+            return add_element(xml_writer, "item", None, Some(attrs));
         }
 
         let mut buffer = Vec::<u8>::new();
@@ -304,49 +340,36 @@ impl<W: Write + Seek> EpubWriter<W> {
             ]),
         )?;
 
-        if let Some(ref cover) = self.cover {
-            let image_file_name = cover.image_file_name();
-            add_element(
-                &mut xml_writer,
-                "item",
-                None,
-                Some(vec![
-                    ("href", image_file_name.as_str()),
-                    ("id", format!("i_{}", image_file_name).as_str()),
-                    ("media-type", cover.mime_type),
-                    ("properties", "cover-image"),
-                ]),
-            )?;
+        let cover = self.cover.as_ref().unwrap();
+        manifest_add_image(
+            &mut xml_writer,
+            cover.base_name.as_str(),
+            cover.cover_file_name().as_str(),
+            cover.mime_type,
+            true,
+        )?;
 
-            let page_file_name = cover.cover_file_name();
-            add_element(
-                &mut xml_writer,
-                "item",
-                None,
-                Some(vec![
-                    ("href", page_file_name.as_str()),
-                    ("id", format!("p_{}", page_file_name).as_str()),
-                    ("media-type", "application/xhtml+xml"),
-                    ("properties", "svg"),
-                ]),
-            )?;
-        };
+        let page_file_name = cover.cover_file_name();
+        add_element(
+            &mut xml_writer,
+            "item",
+            None,
+            Some(vec![
+                ("href", page_file_name.as_str()),
+                ("id", format!("p_{}", page_file_name).as_str()),
+                ("media-type", "application/xhtml+xml"),
+                ("properties", "svg"),
+            ]),
+        )?;
 
-        let mut is_first = true;
         for i in self.images.iter() {
-            let img_file_name = i.image_file_name();
-            let img_id = format!("i_{}", &img_file_name);
-            let mut img_attrs = vec![
-                ("href", img_file_name.as_str()),
-                ("id", img_id.as_str()),
-                ("media-type", i.mime_type),
-            ];
-            if is_first && self.cover.is_none() {
-                img_attrs.push(("properties", "cover-image"));
-            }
-            is_first = false;
-
-            add_element(&mut xml_writer, "item", None, Some(img_attrs))?;
+            manifest_add_image(
+                &mut xml_writer,
+                i.base_name.as_str(),
+                i.image_file_name().as_str(),
+                i.mime_type,
+                false,
+            )?;
 
             for j in i.page_file_names(self.metadata.right_to_left).iter() {
                 add_element(
@@ -439,16 +462,8 @@ impl<W: Write + Seek> EpubWriter<W> {
         if bookmarks.is_empty() {
             xml_writer.write(XmlEvent::start_element("li"))?;
             xml_writer.write(
-                XmlEvent::start_element("a").attr(
-                    "href",
-                    self.images
-                        .first()
-                        .unwrap()
-                        .page_file_names(self.metadata.right_to_left)
-                        .first()
-                        .unwrap()
-                        .as_str(),
-                ),
+                XmlEvent::start_element("a")
+                    .attr("href", self.cover.as_ref().unwrap().cover_file_name().as_str()),
             )?;
             xml_writer.write(XmlEvent::characters(self.metadata.title.as_str()))?;
             xml_writer.write(XmlEvent::end_element())?;

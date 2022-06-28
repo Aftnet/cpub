@@ -5,6 +5,15 @@ pub const CONTAINER_XML: &str = r#"<?xml version="1.0" encoding="UTF-8" ?>
   </rootfiles>
 </container>"#;
 
+pub const PAGE_SPACER_XML: &str = r#"<?xml version="1.0" encoding="utf-8"?>
+<html lang="en-US" xml:lang="en-US" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>PGTITLE</title>
+  </head>
+  <body />
+</html>"#;
+
 pub const PAGE_REGULAR_XML: &str = r#"<?xml version="1.0" encoding="utf-8"?>
 <html lang="en-US" xml:lang="en-US" xmlns="http://www.w3.org/1999/xhtml">
   <head>
