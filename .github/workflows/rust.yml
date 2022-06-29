@@ -46,11 +46,11 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: cpub-macos-arm64
-        path: target/aarch64-apple-darwin/release/cpub.exe
+        path: target/aarch64-apple-darwin/release/cpub
     - uses: actions/upload-artifact@v3
       with:
         name: cpub-macos-x64
-        path: target/x86_64-apple-darwin/release/cpub.exe
+        path: target/x86_64-apple-darwin/release/cpub
 
   build_linux:
 
@@ -69,8 +69,8 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: cpub-linux-arm64
-        path: target/aarch64-unknown-linux-gnu/release/cpub.exe
+        path: target/aarch64-unknown-linux-gnu/release/cpub
     - uses: actions/upload-artifact@v3
       with:
         name: cpub-linux-x64
-        path: target/x86_64-unknown-linux-gnu/release/cpub.exe
+        path: target/x86_64-unknown-linux-gnu/release/cpub
