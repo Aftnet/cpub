@@ -1,61 +1,16 @@
 name: Rust
 
 on:
-  push:
-    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+    types: [ opened, reopened, closed, edited ]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_windows:
-
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install ARM Target
-      run: rustup target add aarch64-pc-windows-msvc
-    - name: Build arm64
-      run: cargo build --release --target aarch64-pc-windows-msvc
-    - name: Build x64
-      run: cargo build --release --target x86_64-pc-windows-msvc
-    - uses: actions/upload-artifact@v3
-      with:
-        name: cpub-win-arm64
-        path: target/aarch64-pc-windows-msvc/release/cpub.exe
-    - uses: actions/upload-artifact@v3
-      with:
-        name: cpub-win-x64
-        path: target/x86_64-pc-windows-msvc/release/cpub.exe
-
-  build_macos:
-
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install ARM Target
-      run: rustup target add aarch64-apple-darwin
-    - name: Build arm64
-      run: cargo build --release --target aarch64-apple-darwin
-    - name: Build x64
-      run: cargo build --release --target x86_64-apple-darwin
-    - uses: actions/upload-artifact@v3
-      with:
-        name: cpub-macos-arm64
-        path: target/aarch64-apple-darwin/release/cpub
-    - uses: actions/upload-artifact@v3
-      with:
-        name: cpub-macos-x64
-        path: target/x86_64-apple-darwin/release/cpub
-
   build_linux:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Install ARM Compiler
@@ -74,3 +29,53 @@ jobs:
       with:
         name: cpub-linux-x64
         path: target/x86_64-unknown-linux-gnu/release/cpub
+
+  build_macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install ARM Target
+      run: rustup target add aarch64-apple-darwin
+    - name: Build arm64
+      run: cargo build --release --target aarch64-apple-darwin
+    - name: Build x64
+      run: cargo build --release --target x86_64-apple-darwin
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-macos-arm64
+        path: target/aarch64-apple-darwin/release/cpub
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-macos-x64
+        path: target/x86_64-apple-darwin/release/cpub
+
+  build_windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install ARM Target
+      run: rustup target add aarch64-pc-windows-msvc
+    - name: Build arm64
+      run: cargo build --release --target aarch64-pc-windows-msvc
+    - name: Build x64
+      run: cargo build --release --target x86_64-pc-windows-msvc
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-win-arm64
+        path: target/aarch64-pc-windows-msvc/release/cpub.exe
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-win-x64
+        path: target/x86_64-pc-windows-msvc/release/cpub.exe
+
+  release:
+    needs: [ build_linux, build_macos, build_windows ]
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: artifacts
