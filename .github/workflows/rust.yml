@@ -16,12 +16,41 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --release --verbose
+    - name: Install ARM Target
+      run: rustup target add aarch64-pc-windows-msvc
+    - name: Build arm64
+      run: cargo build --release --target aarch64-pc-windows-msvc
+    - name: Build x64
+      run: cargo build --release --target x86_64-pc-windows-msvc
     - uses: actions/upload-artifact@v3
       with:
-        name: cpub_win_x64
-        path: target/release/cpub.exe
+        name: cpub-win-arm64
+        path: target/aarch64-pc-windows-msvc/release/cpub.exe
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-win-x64
+        path: target/x86_64-pc-windows-msvc/release/cpub.exe
+
+  build_macos:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install ARM Target
+      run: rustup target add aarch64-apple-darwin
+    - name: Build arm64
+      run: cargo build --release --target aarch64-apple-darwin
+    - name: Build x64
+      run: cargo build --release --target x86_64-apple-darwin
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-macos-arm64
+        path: target/aarch64-apple-darwin/release/cpub.exe
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-macos-x64
+        path: target/x86_64-apple-darwin/release/cpub.exe
 
   build_linux:
 
@@ -29,9 +58,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --release --verbose
+    - name: Install ARM Target
+      run: rustup target add aarch64-unknown-linux-gnu
+    - name: Build arm64
+      run: cargo build --release --target aarch64-unknown-linux-gnu
+    - name: Build x64
+      run: cargo build --release --target x86_64-unknown-linux-gnu
     - uses: actions/upload-artifact@v3
       with:
-        name: cpub_linux_x64
-        path: target/release/cpub
+        name: cpub-linux-arm64
+        path: target/aarch64-unknown-linux-gnu/release/cpub.exe
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub-linux-x64
+        path: target/x86_64-unknown-linux-gnu/release/cpub.exe
