@@ -17,7 +17,7 @@ const ARG_ID_LANGUAGE: &str = "language";
 const ARG_ID_DESCRIPTION: &str = "description";
 const ARG_ID_SOURCE: &str = "source";
 const ARG_ID_COPYRIGHT: &str = "copyright";
-const ARG_ID_RTL: &str = "rtl";
+const ARG_ID_RTL: &str = "right-to-left";
 const ARG_ID_TAGS: &str = "tags";
 const ARG_ID_BATCH_VOLUME_START_NUMBER: &str = "vsn";
 const ARG_ID_BATCH_VOLUME_NUM_DIGITS: &str = "vnd";
@@ -66,7 +66,7 @@ fn main() {
             ARG_ID_TITLE,
             Some('t'),
             "TITLE",
-            "Set the title",
+            "Set the title. Occurrences of '%num%' will be replaced by the volume number in batch mode",
             true,
             false,
             true,
@@ -144,7 +144,7 @@ fn main() {
         ),
         arg_from_id(
             ARG_ID_RTL,
-            None,
+            Some('r'),
             "RTL",
             "Set the reading order as right to left (manga)",
             false,
