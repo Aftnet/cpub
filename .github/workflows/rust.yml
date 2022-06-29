@@ -10,7 +10,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build_windows:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --release --verbose
+    - uses: actions/upload-artifact@v3
+      with:
+        name: cpub_win_x64
+        path: target/release/cpub.exe
+
+  build_linux:
 
     runs-on: ubuntu-latest
 
@@ -21,4 +34,4 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: cpub_linux_x64
-        path: target/cpub
+        path: target/release/cpub
