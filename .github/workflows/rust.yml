@@ -1,8 +1,6 @@
 name: Rust
 
 on:
-  push:
-    branches: [ "master"]
   pull_request:
     branches: [ "master" ]
     types: [ opened, reopened, closed, edited ]
@@ -82,12 +80,12 @@ jobs:
         run: chmod -R 755 artifacts
       - name: Generate archives
         run: |
-          zip -j artifacts/cpub-macos-arm64.zip artifacts/cpub-macos-arm64/cpub
-          zip -j artifacts/cpub-macos-x64.zip artifacts/cpub-macos-x64/cpub
-          zip -j artifacts/cpub-linux-arm64.zip artifacts/cpub-linux-arm64/cpub
-          zip -j artifacts/cpub-linux-x64.zip artifacts/cpub-linux-x64/cpub
-          zip -j artifacts/cpub-windows-arm64.zip artifacts/cpub-windows-arm64/cpub
-          zip -j artifacts/cpub-windows-x64.zip artifacts/cpub-windows-x64/cpub
+          zip -j artifacts/cpub-macos-arm64.zip artifacts/cpub-macos-arm64/*
+          zip -j artifacts/cpub-macos-x64.zip artifacts/cpub-macos-x64/*
+          zip -j artifacts/cpub-linux-arm64.zip artifacts/cpub-linux-arm64/*
+          zip -j artifacts/cpub-linux-x64.zip artifacts/cpub-linux-x64/*
+          zip -j artifacts/cpub-windows-arm64.zip artifacts/cpub-windows-arm64/*
+          zip -j artifacts/cpub-windows-x64.zip artifacts/cpub-windows-x64/*
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
