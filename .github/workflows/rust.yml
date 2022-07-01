@@ -1,6 +1,8 @@
 name: Rust
 
 on:
+  push:
+    branches: [ "master"]
   pull_request:
     branches: [ "master" ]
     types: [ opened, reopened, closed, edited ]
@@ -61,11 +63,11 @@ jobs:
       run: cargo build --release --target x86_64-pc-windows-msvc
     - uses: actions/upload-artifact@v3
       with:
-        name: cpub-win-arm64
+        name: cpub-windows-arm64
         path: target/aarch64-pc-windows-msvc/release/cpub.exe
     - uses: actions/upload-artifact@v3
       with:
-        name: cpub-win-x64
+        name: cpub-windows-x64
         path: target/x86_64-pc-windows-msvc/release/cpub.exe
 
   release:
@@ -76,6 +78,27 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           path: artifacts
-      - name: Display structure of downloaded files
-        run: ls -R
-        working-directory: artifacts
+      - name: Set exec permission
+        run: chmod -R 755 artifacts
+      - name: Generate archives
+        run: |
+          zip -j artifacts/cpub-macos-arm64.zip artifacts/cpub-macos-arm64/cpub
+          zip -j artifacts/cpub-macos-x64.zip artifacts/cpub-macos-x64/cpub
+          zip -j artifacts/cpub-linux-arm64.zip artifacts/cpub-linux-arm64/cpub
+          zip -j artifacts/cpub-linux-x64.zip artifacts/cpub-linux-x64/cpub
+          zip -j artifacts/cpub-windows-arm64.zip artifacts/cpub-windows-arm64/cpub
+          zip -j artifacts/cpub-windows-x64.zip artifacts/cpub-windows-x64/cpub
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: |
+            artifacts/cpub-macos-arm64.zip
+            artifacts/cpub-macos-x64.zip
+            artifacts/cpub-linux-arm64.zip
+            artifacts/cpub-linux-x64.zip
+            artifacts/cpub-windows-arm64.zip
+            artifacts/cpub-windows-x64.zip
+
