@@ -9,7 +9,6 @@ env:
 
 jobs:
   build_linux:
-    if: false
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -31,7 +30,6 @@ jobs:
         path: target/x86_64-unknown-linux-gnu/release/cpub
 
   build_macos:
-    if: false
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
