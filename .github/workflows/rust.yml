@@ -3,15 +3,13 @@ name: Rust
 on:
   pull_request:
     branches: [ "master" ]
-    types: [ opened, reopened, closed, edited ]
-  push:
-    branch: master
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build_linux:
+    if: false
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -33,6 +31,7 @@ jobs:
         path: target/x86_64-unknown-linux-gnu/release/cpub
 
   build_macos:
+    if: false
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
@@ -54,24 +53,25 @@ jobs:
   build_windows:
     runs-on: windows-latest
     steps:
+    - shell: cmd
     - uses: actions/checkout@v3
+    - name: Code Signing
+      env:
+        CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
+        CERT_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_CERT_PASSWORD }}
+      run: |
+        echo "%CERT_BASE64%"
+        certutil -decode codesign.txt codsesign.pfx
+        del codesign.txt
+        signtool sign /a /f codesign.pfx /p "%CERT_PASSWORD%" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\aarch64-pc-windows-msvc\release\cpub.exe"
+        signtool sign /a /f codesign.pfx /p "%CERT_PASSWORD%" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\x86_64-pc-windows-msvc\release\cpub.exe"
+        del codesign.pfx
     - name: Install ARM Target
       run: rustup target add aarch64-pc-windows-msvc
     - name: Build arm64
       run: cargo build --release --target aarch64-pc-windows-msvc
     - name: Build x64
       run: cargo build --release --target x86_64-pc-windows-msvc
-    - name: Code Signing
-      env: |
-        CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
-        CERT_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_CERT_PASSWORD }}
-      run: |
-        echo "%CERT_BASE64%" > codesign.txt
-        certutil -decode codesign.txt codsesign.pfx
-        del codesign.txt
-        signtool sign /a /f codesign.pfx /p "%CERT_PASSWORD%" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\aarch64-pc-windows-msvc\release\cpub.exe"
-        signtool sign /a /f codesign.pfx /p "%CERT_PASSWORD%" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\x86_64-pc-windows-msvc\release\cpub.exe"
-        del codesign.pfx
     - uses: actions/upload-artifact@v3
       with:
         name: cpub-windows-arm64
