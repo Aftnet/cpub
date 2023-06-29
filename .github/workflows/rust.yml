@@ -54,6 +54,12 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Install ARM Target
+      run: rustup target add aarch64-pc-windows-msvc
+    - name: Build arm64
+      run: cargo build --release --target aarch64-pc-windows-msvc
+    - name: Build x64
+      run: cargo build --release --target x86_64-pc-windows-msvc
     - name: Code Signing
       shell: pwsh
       env:
@@ -66,12 +72,6 @@ jobs:
         & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe' sign /a /f codesign.pfx /p "$env:CERT_PASSWORD" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\aarch64-pc-windows-msvc\release\cpub.exe"
         & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe' sign /a /f codesign.pfx /p "$env:CERT_PASSWORD" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\x86_64-pc-windows-msvc\release\cpub.exe"
         del codesign.pfx
-    - name: Install ARM Target
-      run: rustup target add aarch64-pc-windows-msvc
-    - name: Build arm64
-      run: cargo build --release --target aarch64-pc-windows-msvc
-    - name: Build x64
-      run: cargo build --release --target x86_64-pc-windows-msvc
     - uses: actions/upload-artifact@v3
       with:
         name: cpub-windows-arm64
