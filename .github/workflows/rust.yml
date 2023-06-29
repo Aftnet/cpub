@@ -60,11 +60,11 @@ jobs:
         CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
         CERT_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_CERT_PASSWORD }}
       run: |
-        echo "$env:CERT_BASE64" > codesign.txt
+        Set-Content -Path codesign.txt -Value $env:CERT_BASE64
         certutil -decode codesign.txt codsesign.pfx
         del codesign.txt
-        signtool sign /a /f codesign.pfx /p "%CERT_PASSWORD%" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\aarch64-pc-windows-msvc\release\cpub.exe"
-        signtool sign /a /f codesign.pfx /p "%CERT_PASSWORD%" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\x86_64-pc-windows-msvc\release\cpub.exe"
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe' sign /a /f codesign.pfx /p "$env:CERT_PASSWORD" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\aarch64-pc-windows-msvc\release\cpub.exe"
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe' sign /a /f codesign.pfx /p "$env:CERT_PASSWORD" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\x86_64-pc-windows-msvc\release\cpub.exe"
         del codesign.pfx
     - name: Install ARM Target
       run: rustup target add aarch64-pc-windows-msvc
