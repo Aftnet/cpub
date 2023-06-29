@@ -53,6 +53,7 @@ jobs:
   build_windows:
     runs-on: windows-latest
     steps:
+    - shell: cmd
     - uses: actions/checkout@v3
     - name: Code Signing
       env:
