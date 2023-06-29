@@ -55,12 +55,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Code Signing
-      shell: cmd
+      shell: pwsh
       env:
         CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
         CERT_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_CERT_PASSWORD }}
       run: |
-        echo "%CERT_BASE64%" > codesign.txt
+        echo "$env:CERT_BASE64" > codesign.txt
         certutil -decode codesign.txt codsesign.pfx
         del codesign.txt
         signtool sign /a /f codesign.pfx /p "%CERT_PASSWORD%" /fd sha256 /tr "http://timestamp.sectigo.com" /td sha256 "target\aarch64-pc-windows-msvc\release\cpub.exe"
