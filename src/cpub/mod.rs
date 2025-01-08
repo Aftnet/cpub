@@ -343,6 +343,20 @@ impl<W: Write + Seek> EpubWriter<W> {
         if let Some(d) = self.metadata.copyright.as_ref() {
             add_element(&mut xml_writer, "dc:rights", Some(d), None)?;
         }
+        if let Some(d) = self.metadata.series.as_ref() {
+            add_element(
+                &mut xml_writer,
+                "meta",
+                Some(d),
+                Some(vec![("property", "belongs-to-collection"), ("id", "c01")])
+            )?;
+            add_element(
+                &mut xml_writer,
+                "meta",
+                Some("series"),
+                Some(vec![("refines", "#c01"), ("property", "collection-type")]),
+            )?;
+        }
 
         xml_writer.write(XmlEvent::end_element())?;
 

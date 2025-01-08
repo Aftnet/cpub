@@ -244,6 +244,7 @@ pub fn generate_single(args: &ArgMatches) -> Result<()> {
 pub fn generate_batch(args: &ArgMatches, batch_args: &ArgMatches) -> Result<()> {
     let (inpath, outpath) = io_directories_from_args(args)?;
     let mut metadata = metadata_from_args(args)?;
+    metadata.series = Some(metadata.title.clone());
 
     let mut vol_dirs = inpath
         .read_dir()?
