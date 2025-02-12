@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Ok, Result};
@@ -320,7 +320,7 @@ fn create_epub_file(
         let f = File::create(output_file_path)?;
         let f = BufWriter::new(f);
         let mut writer = EpubWriter::new(f, metadata.clone())?;
-
+        let progress_report_granularity = 10;
         let image_paths = list_supported_images(input_dir_path)?;
         println!(" ({} images)", image_paths.len());
 
@@ -340,13 +340,13 @@ fn create_epub_file(
             }
 
             ctr += 1;
-            print!(
-                "{:4.1}% complete\r",
-                (100 * ctr) as f32 / image_paths.len() as f32
-            );
+            if ctr % progress_report_granularity == 0 {
+                print!("\r{:4.1}%", (100 * ctr) as f32 / image_paths.len() as f32);
+                std::io::stdout().flush()?;
+            }
         }
 
-        println!("");
+        println!("\rComplete");
         writer.finalize()?;
         return Ok(());
     }
